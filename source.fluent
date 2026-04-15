@@ -1,0 +1,48 @@
+# Teste Global de Tokens - Fluent Language
+# 1. Tipos Primitivos e Atribuição (KW_RECEIVES)
+integer contador receives 0
+float pi_valor receives 3.1415
+string saudacao receives "Ola, mundo"
+boolean status receives true
+
+# 2. Operadores Aritméticos e Exponenciação
+float calculo receives (2 plus 3) times 4 divided by 2
+integer potencia receives 2 to the power of 3
+integer decremento receives 10 minus 5
+
+# 3. Operadores Relacionais (Multi-palavra)
+if (contador equals 0) then
+    status receives false
+end
+
+if (pi_valor differs from 3.0) then
+    say("Valor de pi alterado")
+end
+
+if (10 is greater than or equal to 5) then
+    if (5 is less than or equal to 10) then
+        if (10 is greater than 9) then
+            if (9 is less than 10) then
+                say(saudacao)
+            end
+        end
+    end
+end
+
+# 4. Estrutura de Repetição (KW_WHILE)
+while (contador is less than 5) then
+    contador receives contador plus 1
+end
+
+# 5. Definição e Chamada de Função
+float function calcular_area(float raio, float multiplicador) then
+    float resultado receives (raio to the power of 2) times pi_valor
+    return resultado divided by multiplicador
+end
+
+# Chamada com argumentos e vírgula
+float area_final receives calcular_area(2.5, 1.0)
+
+# 6. Booleanos e Encerramento
+boolean check receives false
+say("Fim do Teste")
