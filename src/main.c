@@ -1,9 +1,14 @@
 #include <stdio.h>
-#include "../lexer/lexer.c"
+#include "../lexer/lexer.h"
 
-int main() {
+int main(int argc, char* argv[]) {
+    if(argc < 2) {
+        fprintf(stderr, "Usage: %s <source-file>\n", argv[0]);
+        return 1;
+    }
+
     Lexer lexer;
-    init_lexer(&lexer);
+    init_lexer(&lexer, argv[1]);
 
     printf("--- Iniciando Lexical Analysis ---\n");
 

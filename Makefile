@@ -1,8 +1,8 @@
 all:
-	gcc src/main/main.c -I src/token/ -o fluent
+	gcc src/main.c src/lexer/lexer.c -I src/token/ -I src/lexer/ -o fluent
 
 run: all
-	./fluent
+	./fluent source.fluent
 
 clean:
 	rm -f fluent

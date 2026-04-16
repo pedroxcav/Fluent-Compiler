@@ -1,22 +1,15 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
-#include "../token/token.h"
+#include "lexer.h"
 
-typedef struct {
-    char* source;
-    int position;
-    int line;
-} Lexer;
-
-void init_lexer(Lexer* lexer) {
+void init_lexer(Lexer* lexer, const char* filename) {
     lexer -> position = 0;
     lexer -> line = 1;
     
     // gets the source.fluent file
-    FILE* file = fopen("source.fluent", "r");
+    FILE* file = fopen(filename, "r");
+    if(file == NULL) {
+        fprintf(stderr, "Error opening file: %s\n", filename);
+        exit(1);
+    }
 
     // return the file size
     fseek(file, 0, SEEK_END);
@@ -219,7 +212,13 @@ Token next_token(Lexer* lexer) {
             while (isdigit(peek(lexer)) || peek(lexer) == '.') {
                 if (peek(lexer) == '.') {
                     if (is_float) break;
-                    is_float = true;
+                    advance(lexer);
+                    if(isdigit(peek(lexer))) {
+                        is_float = true;
+                    } else {
+                        lexer->position--;
+                        break;
+                    }                
                 }
                 advance(lexer);
             }
@@ -256,6 +255,9 @@ Token next_token(Lexer* lexer) {
             token.lexeme = strdup(",");
             return token;
         }
+        token.type = UNKNOWN;
+        token.lexeme = extract_lexeme(lexer, lexer->position - 1);
         advance(lexer);
+        return token;
     }
 }
