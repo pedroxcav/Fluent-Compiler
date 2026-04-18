@@ -88,7 +88,7 @@ Declaração: `TYPE IDENTIFIER receives EXPR` → ex: `float pi receives 3.14`
 | `OP_MINUS`    | `minus`                       | subtração      |
 | `OP_TIMES`    | `times`                       | multiplicação  |
 | `OP_DIV`      | `divided by`                  | divisão        |
-| `OP_POW`      | `to the power of`             | exponenciação  |
+| `OP_POW`      | `to the exponentiation of`             | exponenciação  |
 | `OP_EQ`       | `equals`                      | igual          |
 | `OP_NEQ`      | `differs from`                | diferente      |
 | `OP_LT`       | `is less than`                | menor que      |
@@ -121,6 +121,62 @@ Declaração: `TYPE IDENTIFIER receives EXPR` → ex: `float pi receives 3.14`
 **Ignorados:** espaços/tabs `[ \t]+`, quebras de linha `\n|\r\n`, comentários `#[^\n]*`
 
 > ⚠️ Prioridade no lexer: (1) operadores multi-palavra, do mais longo ao mais curto; (2) palavras-chave e tipos; (3) identificadores.
+
+---
+
+## Gramática EBNF
+
+```ebnf
+(* Programa *)
+program = { statement } ;
+
+(* Statements *)
+statement = variable_declaration | assignment | if_statement | while_statement | function_definition | return_statement | say_statement ;
+
+(* Declaração de variável *)
+variable_declaration = TYPE IDENTIFIER KW_RECEIVES expression ;
+
+(* Atribuição *)
+assignment = IDENTIFIER KW_RECEIVES expression ;
+
+(* Condicional *)
+if_statement = KW_IF LPAREN expression RPAREN KW_THEN { statement } [ KW_ELSE { statement } ] KW_END ;
+
+(* Repetição *)
+while_statement = KW_WHILE LPAREN expression RPAREN KW_THEN { statement } KW_END ;
+
+(* Definição de função *)
+function_definition = TYPE KW_FUNCTION IDENTIFIER LPAREN [ parameter { COMMA parameter } ] RPAREN KW_THEN { statement } KW_END ;
+
+parameter = TYPE IDENTIFIER ;
+
+(* Return *)
+return_statement = KW_RETURN expression ;
+
+(* Say *)
+say_statement = KW_SAY LPAREN expression RPAREN ;
+
+(* Expressões — hierarquia define precedência *)
+expression = comparison ;
+
+comparison = addition [ ( OP_EQ | OP_NEQ | OP_LT | OP_GT | OP_LTE | OP_GTE ) addition ] ;
+
+addition = multiplication { ( OP_PLUS | OP_MINUS ) multiplication } ;
+
+multiplication = exponentiation { ( OP_TIMES | OP_DIV ) exponentiation } ;
+
+exponentiation = atom [ OP_POW exponentiation ] ;
+
+atom = TYPE_INTEGER | TYPE_FLOAT | TYPE_STRING | KW_TRUE | KW_FALSE | function_call | IDENTIFIER | LPAREN expression RPAREN ;
+
+(* Chamada de função *)
+function_call = IDENTIFIER LPAREN [ expression { COMMA expression } ] RPAREN ;
+
+(* Tipos *)
+TYPE = TYPE_INTEGER | TYPE_FLOAT | TYPE_STRING | TYPE_BOOLEAN ;
+```
+
+> ⚠️ A hierarquia de expressões (`comparison` → `addition` → `multiplication` → `exponentiation` → `atom`) define a precedência dos operadores: operadores mais abaixo na hierarquia são resolvidos primeiro. Cada nível vira uma função recursiva no parser.
 
 ---
 
