@@ -1,23 +1,24 @@
 CC = gcc
-CFLAGS = -Wall -I./src
+FLAGS = -Wall
 SRC = src/lexer.c src/main.c
-OBJ = $(SRC:.c=.o)
-TARGET = exemplo.exe
+OBJ = build/lexer.o build/main.o
+EXE = build/exemplo.exe
+INCLUDE = -I./src
 
-all: $(TARGET)
+all: $(EXE)
 
-# Adicionamos -lregex ao final da linha de linkagem
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lregex
+$(EXE): $(OBJ)
+	$(CC) $(FLAGS) $(INCLUDE) -o $(EXE) $(OBJ) -lregex
 
-# Regra para compilar os .c em .o
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+build/lexer.o: src/lexer.c
+	$(CC) $(FLAGS) $(INCLUDE) -c src/lexer.c -o build/lexer.o
 
-# No MinGW/Windows usamos 'del' em vez de 'rm'
+build/main.o: src/main.c
+	$(CC) $(FLAGS) $(INCLUDE) -c src/main.c -o build/main.o
+
+re: clean all
+	$(EXE) tests/exemplo.fluent
+
 clean:
-	if exist src\*.o del /q src\*.o
-	if exist $(TARGET) del /q $(TARGET)
-
-run: all
-	.\$(TARGET) tests/exemplo.fluent
+	if exist build\*.o del /q build\*.o
+	if exist build\*.exe del /q build\*.exe
