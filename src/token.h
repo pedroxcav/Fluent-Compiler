@@ -49,7 +49,6 @@ typedef struct {
     TokenType type;
     char* lexeme;
     int line;
-
 } Token;
 
 #endif
