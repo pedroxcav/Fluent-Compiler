@@ -5,7 +5,10 @@ OBJ = build/lexer.o build/main.o
 EXE = build/exemplo.exe
 INCLUDE = -I./src
 
-all: $(EXE)
+all: mkdir $(EXE)
+
+mkdir:
+	if not exist build mkdir build
 
 $(EXE): $(OBJ)
 	$(CC) $(FLAGS) $(INCLUDE) -o $(EXE) $(OBJ) -lregex
