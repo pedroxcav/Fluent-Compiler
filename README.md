@@ -3,7 +3,7 @@
 **Teoria da Computação e Compiladores**
 Entrega: 23 de Abril de 2026
 
-Linguagem com sintaxe inspirada no inglês natural, estaticamente tipada e compilada.
+Linguagem com sintaxe inspirada no inglês natural, tipada e compilada.
 
 ---
 

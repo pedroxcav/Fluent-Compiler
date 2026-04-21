@@ -41,7 +41,7 @@ static TokenValue token_values[] = {
     {NULL, UNKNOWN, false}
 };
 
-static const char* patterns[REGEX_COUNT] = {
+static const char *patterns[REGEX_COUNT] = {
     // REGEX_FLOAT
     "^[0-9]+\\.[0-9]+",
     // REGEX_INTEGER
@@ -57,7 +57,7 @@ static const char* patterns[REGEX_COUNT] = {
 };
 
 // Gets part of souce from start to current position
-static char* extract_lexeme(Lexer *lexer, int start_position) {
+static char *extract_lexeme(Lexer *lexer, int start_position) {
     int length = lexer -> position - start_position;
     char *lexeme = malloc(length + 1);
     if (lexeme) {
@@ -85,7 +85,7 @@ static bool match_regex(Lexer *lexer, int regex_index, int *length) {
     return false;
 }
 
-static void skip_whitespace(Lexer* lexer) {
+static void skip_whitespace(Lexer *lexer) {
     int length;
     bool found;
     do {
@@ -109,7 +109,7 @@ static void skip_whitespace(Lexer* lexer) {
     } while (found);
 }
 
-static bool complex_token(Lexer* lexer, Token* token) {
+static bool complex_token(Lexer *lexer, Token *token) {
     // Runs thought all of the token values until the last one
     for (int i = 0; token_values[i].pattern != NULL; i++) {
         if (!token_values[i].complex) continue;
@@ -132,7 +132,7 @@ static bool complex_token(Lexer* lexer, Token* token) {
     return false;
 }
 
-static bool read_number(Lexer* lexer, Token* token) {
+static bool read_number(Lexer *lexer, Token *token) {
     int length;
     if (match_regex(lexer, REGEX_FLOAT, &length))
         token -> type = TYPE_FLOAT;
@@ -147,7 +147,7 @@ static bool read_number(Lexer* lexer, Token* token) {
     return true;
 }
 
-static bool read_string(Lexer* lexer, Token* token) {
+static bool read_string(Lexer *lexer, Token *token) {
     int length;
     if (!match_regex(lexer, REGEX_STRING, &length))
         return false;
@@ -165,7 +165,7 @@ static bool read_string(Lexer* lexer, Token* token) {
     return true;
 }
 
-static bool read_identifier(Lexer* lexer, Token* token) {
+static bool read_identifier(Lexer *lexer, Token *token) {
     int length;
     if (!match_regex(lexer, REGEX_IDENTIFIER, &length)) 
         return false;
@@ -184,7 +184,7 @@ static bool read_identifier(Lexer* lexer, Token* token) {
     return true;
 }
 
-Token next_token(Lexer* lexer) {
+Token next_token(Lexer *lexer) {
     skip_whitespace(lexer);
 
     Token token;
@@ -219,7 +219,7 @@ void init_lexer(Lexer *lexer, const char *source) {
     }
 }
 
-void del_lexer(Lexer* lexer) {
+void del_lexer(Lexer *lexer) {
     for (int i = 0; i < REGEX_COUNT; i++)
         regfree(&lexer->regex[i]);
     free((char*) lexer->source);
