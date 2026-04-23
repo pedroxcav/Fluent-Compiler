@@ -1,87 +1,88 @@
 # ─── Teste Global - Fluent Language ───
 
 # 1. Declaração de variáveis (todos os tipos)
-integer contador receives 0
-float pi receives 3.1415
-string mensagem receives "Olá, Fluent!"
-boolean ativo receives true
-boolean inativo receives false
+integer contador receives 0;
+float pi receives 3.1415;
+string mensagem receives "Ola, Fluent!";
+boolean ativo receives true;
+boolean inativo receives false;
 
 # 2. Operadores aritméticos
-integer soma receives 10 plus 5
-integer subtracao receives 10 minus 3
-integer multiplicacao receives 4 times 3
-float divisao receives 10 divided by 4
-integer potencia receives 2 to the power of 8
+integer soma receives 10 plus 5;
+integer subtracao receives 10 minus 3;
+integer multiplicacao receives 4 times 3;
+float divisao receives 10 divided by 4;
+integer potencia receives 2 to the power of 8;
 
-# 3. Operadores relacionais (todos os seis)
-integer a receives 10
-integer b receives 20
+# 3. Variáveis para comparações
+integer a receives 10;
+integer b receives 20;
 
+# 4. Operadores relacionais
 if (a equals 10) then
-    say("a é igual a 10")
+    say("a e igual a 10");
 end
 
 if (a differs from b) then
-    say("a e b são diferentes")
+    say("a e b sao diferentes");
 end
 
 if (a is less than b) then
-    say("a é menor que b")
+    say("a e menor que b");
 end
 
 if (b is greater than a) then
-    say("b é maior que a")
+    say("b e maior que a");
 end
 
 if (a is less than or equal to 10) then
-    say("a é menor ou igual a 10")
+    say("a e menor ou igual a 10");
 end
 
 if (b is greater than or equal to 20) then
-    say("b é maior ou igual a 20")
+    say("b e maior ou igual a 20");
 end
 
-# 4. Condicional com else
+# 5. Condicional com else
 if (ativo equals true) then
-    say("sistema ativo")
+    say("sistema ativo");
 else
-    say("sistema inativo")
+    say("sistema inativo");
 end
 
-# 5. Laço while
+# 6. Laço while
 while (contador is less than 5) then
-    contador receives contador plus 1
+    contador receives contador plus 1;
 end
 
-# 6. Funções
+# 7. Funções
 integer function somar(integer x, integer y) then
-    return x plus y
+    return x plus y;
 end
 
 float function area_circulo(float raio) then
-    float area receives raio to the power of 2
-    return area times pi
+    float area receives raio to the power of 2;
+    return area times pi;
 end
 
 boolean function maior(integer x, integer y) then
     if (x is greater than y) then
-        return true
+        return true;
     else
-        return false
+        return false;
     end
 end
 
-# 7. Chamadas de função
-integer resultado receives somar(10, 20)
-say(resultado)
+# 8. Chamadas de função
+integer resultado receives somar(10, 20);
+say(resultado);
 
-float area receives area_circulo(3.0)
-say(area)
+float area receives area_circulo(3.0);
+say(area);
 
-say(maior(10, 5))
+say(maior(10, 5));
 
-# 8. Identificadores com underscore
-integer valor_maximo receives 100
-float taxa_juros receives 2.5
-string nome_usuario receives "admin"
+# 9. Identificadores com underscore
+integer valor_maximo receives 100;
+float taxa_juros receives 2.5;
+string nome_usuario receives "admin";

@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <locale.h>
 #include "lexer.h"
 
 int main(int argc, char* argv[]) {
@@ -30,7 +29,7 @@ int main(int argc, char* argv[]) {
     Token token;
     do {
         token = next_token(&lexer);
-        printf("[Linha %02d] Tipo: %-5d | Lexema: '%s'\n", token.line, token.type, token.lexeme ? token.lexeme : "EOF");
+        printf("[Linha %02d] Tipo: %-5d | Lexema: '%s'\n", token.line, token.type, token.lexeme ? token.lexeme : token.type == SEMICOLON ? ";" : "EOF");
         if (token.lexeme) 
             free(token.lexeme);
     } while (token.type != EOF_TOKEN);

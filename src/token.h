@@ -38,6 +38,9 @@ typedef enum {
     RPAREN,
     COMMA,
 
+    // DELIMITER
+    SEMICOLON,
+
     // END OF FILE
     EOF_TOKEN,
 

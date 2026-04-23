@@ -200,6 +200,13 @@ Token next_token(Lexer *lexer) {
     if (read_string(lexer, &token)) return token;
     if (read_identifier(lexer, &token)) return token;
 
+    if (lexer->source[lexer->position] == ';') {
+        lexer->position++;
+        token.type = SEMICOLON;
+        token.lexeme = NULL;
+        return token;
+    }
+
     int start_pos = lexer->position++;
     token.type = UNKNOWN;
     token.lexeme = extract_lexeme(lexer, start_pos);
