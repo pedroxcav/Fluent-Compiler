@@ -3,7 +3,7 @@
 
 // Organized by length to ensure longest matches first
 static TokenValue token_values[] = {
-    // Operators with multiple words
+    // Operators with multiple words, complex = true
     {"is greater than or equal to", OP_GTE, true},
     {"is less than or equal to", OP_LTE, true},
     {"to the power of", OP_POW, true},
@@ -42,18 +42,12 @@ static TokenValue token_values[] = {
 };
 
 static const char *patterns[REGEX_COUNT] = {
-    // REGEX_FLOAT
-    "^[0-9]+\\.[0-9]+",
-    // REGEX_INTEGER
-    "^[0-9]+",
-    // REGEX_STRING
-    "^\"[^\"]*\"",
-    // REGEX_IDENTIFIER
-    "^[a-zA-Z_][a-zA-Z0-9_]*",
-    // REGEX_WHITESPACE
-    "^[ \t\r\n]+",
-    // REGEX_COMMENT
-    "^#[^\n]*",
+    "^[0-9]+\\.[0-9]+",        // Float
+    "^[0-9]+",                 // Integer
+    "^\"[^\"]*\"",             // String
+    "^[a-zA-Z_][a-zA-Z0-9_]*", // Identifier
+    "^[ \t\r\n]+",             // Whitespace
+    "^#[^\n]*",                // Comment
 };
 
 // Gets part of souce from start to current position
