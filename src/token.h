@@ -8,6 +8,13 @@ typedef enum {
     TYPE_STRING,
     TYPE_BOOLEAN,
 
+    // LITERALS
+    LIT_INTEGER,
+    LIT_FLOAT,
+    LIT_STRING,
+    LIT_TRUE,
+    LIT_FALSE,
+
     // OPERATORS
     OP_PLUS,
     OP_MINUS,
@@ -31,8 +38,6 @@ typedef enum {
     KW_THEN,
     KW_END,
     KW_SAY,
-    KW_TRUE,
-    KW_FALSE,
     IDENTIFIER,
     LPAREN,
     RPAREN,

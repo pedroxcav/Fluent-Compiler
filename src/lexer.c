@@ -26,8 +26,8 @@ static TokenValue token_values[] = {
     {"then", KW_THEN, false},
     {"end", KW_END, false},
     {"say", KW_SAY, false},
-    {"true", KW_TRUE, false},
-    {"false", KW_FALSE, false},
+    {"true", LIT_TRUE, false},
+    {"false", LIT_FALSE, false},
     {"plus", OP_PLUS, false},
     {"minus", OP_MINUS, false},
     {"times", OP_TIMES, false},
@@ -114,8 +114,13 @@ static bool complex_token(Lexer *lexer, Token *token) {
             continue;
         
         // The pattern must be wrote correctly with spaces, otherwise it will probably be an identifier
-        char next = lexer -> source[lexer->position + length];
+        char next = lexer->source[lexer->position + length];
         if (isalnum(next) || next == '_') continue;
+
+        if (lexer->position > 0) {
+            char prev = lexer->source[lexer->position - 1];
+            if (isalnum(prev) || prev == '_') continue;
+        }
 
         int start = lexer->position;
         lexer -> position += length;
@@ -129,9 +134,9 @@ static bool complex_token(Lexer *lexer, Token *token) {
 static bool read_number(Lexer *lexer, Token *token) {
     int length;
     if (match_regex(lexer, REGEX_FLOAT, &length))
-        token -> type = TYPE_FLOAT;
+        token -> type = LIT_FLOAT;
     else if (match_regex(lexer, REGEX_INTEGER, &length))
-        token -> type = TYPE_INTEGER;
+        token -> type = LIT_INTEGER;
     else
         return false;
 
@@ -154,7 +159,7 @@ static bool read_string(Lexer *lexer, Token *token) {
         memcpy(token -> lexeme, lexer -> source + lexer -> position + 1, content_length);
         token -> lexeme[content_length] = '\0';
     }
-    token -> type = TYPE_STRING;
+    token -> type = LIT_STRING;
     lexer -> position += length;
     return true;
 }

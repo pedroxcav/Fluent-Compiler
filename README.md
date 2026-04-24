@@ -69,12 +69,26 @@ end
 
 ## Tipos Primitivos
 
-| Tipo      | Token          | Literal / Regex        |
-|-----------|----------------|------------------------|
-| `integer` | `TYPE_INTEGER` | `[0-9]+`               |
-| `float`   | `TYPE_FLOAT`   | `[0-9]+\.[0-9]+`       |
-| `string`  | `TYPE_STRING`  | `"[^"]*"`              |
-| `boolean` | `TYPE_BOOLEAN` | `true` \| `false`      |
+Cada tipo primitivo possui dois tokens distintos: a **palavra-chave** usada em declarações e a **literal** que representa o valor em expressões.
+
+**Palavras-chave de tipo** (usadas em declarações e parâmetros):
+
+| Tipo      | Token          |
+|-----------|----------------|
+| `integer` | `TYPE_INTEGER` |
+| `float`   | `TYPE_FLOAT`   |
+| `string`  | `TYPE_STRING`  |
+| `boolean` | `TYPE_BOOLEAN` |
+
+**Literais** (valores concretos em expressões):
+
+| Literal          | Token         | Regex / Lexema   |
+|------------------|---------------|------------------|
+| `42`, `0`, `100` | `LIT_INTEGER` | `[0-9]+`         |
+| `3.14`, `2.5`    | `LIT_FLOAT`   | `[0-9]+\.[0-9]+` |
+| `"hello"`        | `LIT_STRING`  | `"[^"]*"`        |
+| `true`           | `LIT_TRUE`    | `true`           |
+| `false`          | `LIT_FALSE`   | `false`          |
 
 Declaração: `TYPE IDENTIFIER receives EXPR` -> exemplo: `float pi receives 3.14`
 
@@ -111,8 +125,11 @@ Declaração: `TYPE IDENTIFIER receives EXPR` -> exemplo: `float pi receives 3.1
 | `KW_THEN`      | `then`                      |
 | `KW_END`       | `end`                       |
 | `KW_SAY`       | `say`                       |
-| `KW_TRUE`      | `true`                      |
-| `KW_FALSE`     | `false`                     |
+| `LIT_INTEGER`  | `[0-9]+`                    |
+| `LIT_FLOAT`    | `[0-9]+\.[0-9]+`            |
+| `LIT_STRING`   | `"[^"]*"`                   |
+| `LIT_TRUE`     | `true`                      |
+| `LIT_FALSE`    | `false`                     |
 | `IDENTIFIER`   | `[a-zA-Z_][a-zA-Z0-9_]*`    |
 | `LPAREN`       | `(`                         |
 | `RPAREN`       | `)`                         |
@@ -168,7 +185,7 @@ multiplication = exponentiation { ( OP_TIMES | OP_DIV ) exponentiation } ;
  
 exponentiation = atom [ OP_POW exponentiation ] ;
  
-atom = TYPE_INTEGER | TYPE_FLOAT | TYPE_STRING | KW_TRUE | KW_FALSE | function_call | IDENTIFIER | LPAREN expression RPAREN ;
+atom = LIT_INTEGER | LIT_FLOAT | LIT_STRING | LIT_TRUE | LIT_FALSE | function_call | IDENTIFIER | LPAREN expression RPAREN ;
  
 (* Chamada de função *)
 function_call = IDENTIFIER LPAREN [ expression { COMMA expression } ] RPAREN ;
