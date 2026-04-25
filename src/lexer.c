@@ -34,9 +34,10 @@ static TokenValue token_values[] = {
     {"equals", OP_EQ, false},
 
     // Symbols
-    {"(", LPAREN, false},
-    {")", RPAREN, false},
-    {",", COMMA,false},
+    {"(", LPAREN,    false},
+    {")", RPAREN,    false},
+    {",", COMMA,     false},
+    {";", SEMICOLON, false},
 
     {NULL, UNKNOWN, false}
 };
@@ -183,6 +184,22 @@ static bool read_identifier(Lexer *lexer, Token *token) {
     return true;
 }
 
+static bool read_symbol(Lexer *lexer, Token *token) {
+    for (int i = 0; token_values[i].pattern != NULL; i++) {
+        if (token_values[i].complex) continue;
+        const char *pattern = token_values[i].pattern;
+        if (strlen(pattern) == 1 && !isalpha((unsigned char)pattern[0])
+                && lexer -> source[lexer->position] == pattern[0]) {
+            int start = lexer->position;
+            lexer->position++;
+            token->type = token_values[i].type;
+            token->lexeme = extract_lexeme(lexer, start);
+            return true;
+        }
+    }
+    return false;
+}
+
 Token next_token(Lexer *lexer) {
     skip_whitespace(lexer);
 
@@ -198,13 +215,7 @@ Token next_token(Lexer *lexer) {
     if (read_number(lexer, &token)) return token;
     if (read_string(lexer, &token)) return token;
     if (read_identifier(lexer, &token)) return token;
-
-    if (lexer->source[lexer->position] == ';') {
-        lexer->position++;
-        token.type = SEMICOLON;
-        token.lexeme = NULL;
-        return token;
-    }
+    if (read_symbol(lexer, &token)) return token;
 
     int start_pos = lexer->position++;
     token.type = UNKNOWN;
@@ -212,6 +223,7 @@ Token next_token(Lexer *lexer) {
     return token;
 }
 
+// At the end, it will be freed by del_lexer. Do not free it manually.
 void init_lexer(Lexer *lexer, const char *source) {
     lexer->source = source;
     lexer->position = 0;
