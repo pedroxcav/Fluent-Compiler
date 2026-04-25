@@ -118,11 +118,6 @@ static bool complex_token(Lexer *lexer, Token *token) {
         char next = lexer->source[lexer->position + length];
         if (isalnum(next) || next == '_') continue;
 
-        if (lexer->position > 0) {
-            char prev = lexer->source[lexer->position - 1];
-            if (isalnum(prev) || prev == '_') continue;
-        }
-
         int start = lexer->position;
         lexer -> position += length;
         token -> type = token_values[i].type;
@@ -148,10 +143,14 @@ static bool read_number(Lexer *lexer, Token *token) {
 }
 
 static bool read_string(Lexer *lexer, Token *token) {
-    int length;
-    if (!match_regex(lexer, REGEX_STRING, &length))
+    if (lexer -> source[lexer -> position] != '"')
         return false;
 
+    int length;
+    if (!match_regex(lexer, REGEX_STRING, &length)) {
+        fprintf(stderr, "Lexer error on line %d: unterminated string literal\n", lexer -> line);
+        exit(1);
+    }
     // Considers the size of the string without the quotes (length - 2)
     int content_length = length - 2;
     token -> lexeme = malloc(content_length + 1);
@@ -224,7 +223,7 @@ Token next_token(Lexer *lexer) {
 }
 
 // At the end, it will be freed by del_lexer. Do not free it manually.
-void init_lexer(Lexer *lexer, const char *source) {
+void init_lexer(Lexer *lexer, char *source) {
     lexer->source = source;
     lexer->position = 0;
     lexer->line = 1;
@@ -240,5 +239,5 @@ void init_lexer(Lexer *lexer, const char *source) {
 void del_lexer(Lexer *lexer) {
     for (int i = 0; i < REGEX_COUNT; i++)
         regfree(&lexer->regex[i]);
-    free((char*) lexer->source);
+    free(lexer->source);
 }

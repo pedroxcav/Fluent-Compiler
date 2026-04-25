@@ -24,13 +24,13 @@ typedef struct {
 } TokenValue;
 
 typedef struct {
-    const char *source;
+    char *source;
     int position;
     int line;
     regex_t regex[REGEX_COUNT];
 } Lexer;
 
-void init_lexer(Lexer *lexer, const char *source);
+void init_lexer(Lexer *lexer, char *source);
 void del_lexer(Lexer *lexer);
 Token next_token(Lexer *lexer);
 
