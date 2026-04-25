@@ -202,11 +202,11 @@ TYPE = TYPE_INTEGER | TYPE_FLOAT | TYPE_STRING | TYPE_BOOLEAN ;
 
 O lexer utiliza regex pré-compiladas e uma tabela declarativa de tokens (`TokenValue`), seguindo a ordem de prioridade abaixo em cada chamada de `next_token`:
 
-1. **Operadores multipalavra** (`complex_token`) — entradas com `complex = true`, matched por `strncmp`, do mais longo ao mais curto
+1. **Operadores multipalavra** (`complex_token`), usando entradas com `complex = true`
 2. **Números** (`read_number`) — regex `^[0-9]+\.[0-9]+` e `^[0-9]+`
 3. **Strings** (`read_string`) — regex `^"[^"]*"`
 4. **Identificadores e reservadas** (`read_identifier`) — regex `^[a-zA-Z_][a-zA-Z0-9_]*`, seguida de lookup na tabela para entradas com `complex = false`
-5. **Símbolos de um caractere** (`read_symbol`) — percorre a tabela procurando entradas com `complex = false` e padrão de um único caractere não-alfabético: `(`, `)`, `,`, `;`
+5. **Símbolos de um caractere** (`read_symbol`) — percorre a tabela procurando entradas com `complex = false` e padrões: `(`, `)`, `,`, `;`
 
 Os regexs são compilados uma única vez em `init_lexer` e armazenadas em `lexer.regex[REGEX_COUNT]`. São liberadas em `del_lexer`.
 
