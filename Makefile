@@ -1,27 +1,21 @@
-CC = gcc
-FLAGS = -Wall
-SRC = src/lexer.c src/main.c
-OBJ = build/lexer.o build/main.o
-EXE = build/exemplo.exe
-INCLUDE = -I./src
+CC      = gcc
+CFLAGS  = -Wall -Wextra -std=c99 -D_POSIX_C_SOURCE=200809L
+SRC     = src/main.c \
+          src/lexer/lexer.c \
+          src/parser/parser.c \
+          src/ast/ast.c
+TARGET  = build/fluent.exe
 
-all: mkdir $(EXE)
+all: build
 
-mkdir:
+build:
 	if not exist build mkdir build
+	$(CC) $(CFLAGS) $(SRC) -o $(TARGET) -lregex
 
-$(EXE): $(OBJ)
-	$(CC) $(FLAGS) $(INCLUDE) -o $(EXE) $(OBJ) -lregex
-
-build/lexer.o: src/lexer.c
-	$(CC) $(FLAGS) $(INCLUDE) -c src/lexer.c -o build/lexer.o
-
-build/main.o: src/main.c
-	$(CC) $(FLAGS) $(INCLUDE) -c src/main.c -o build/main.o
-
-re: clean all
-	$(EXE) tests/exemplo.fluent
+re: clean build run
 
 clean:
-	if exist build\*.o del /q build\*.o
-	if exist build\*.exe del /q build\*.exe
+	if exist build rd /s /q build
+
+run:
+	$(TARGET) tests/exemplo.fluent

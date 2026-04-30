@@ -1,14 +1,16 @@
-#include <stdio.h>
-#include "lexer.h"
+#include "lexer/lexer.h"
+#include "parser/parser.h"
+#include "ast/ast.h"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("Uso: %s <arquivo.fluent>\n", argv[0]);
+        printf("Usage: %s <file.fluent>\n", argv[0]);
         return 1;
     }
+
     FILE *file = fopen(argv[1], "rb");
     if (!file) {
-        perror("Erro ao abrir arquivo");
+        perror("Error opening file");
         return 1;
     }
 
@@ -24,18 +26,11 @@ int main(int argc, char* argv[]) {
     Lexer lexer;
     init_lexer(&lexer, source);
 
-    printf("--- Analise Lexica iniciada ---\n");
+    ASTNode *ast = parse(&lexer);
 
-    Token token;
-    do {
-        token = next_token(&lexer);
-        printf("[Linha %02d] Tipo: %-5d | Lexema: '%s'\n", token.line, token.type, token.lexeme ? token.lexeme : "EOF");
-        if (token.lexeme) 
-            free(token.lexeme);
-    } while (token.type != EOF_TOKEN);
+    print_ast(ast, 0);
 
-    printf("--- Analise Lexica concluida ---\n");
-
+    del_ast(ast);
     del_lexer(&lexer);
     return 0;
 }

@@ -2,20 +2,20 @@
 #define TOKEN_H
 
 typedef enum {
-    // DATA TYPES
+    // Data types
     TYPE_INTEGER,
     TYPE_FLOAT,
     TYPE_STRING,
     TYPE_BOOLEAN,
 
-    // LITERALS
+    // Literals
     LIT_INTEGER,
     LIT_FLOAT,
     LIT_STRING,
     LIT_TRUE,
     LIT_FALSE,
 
-    // OPERATORS
+    // Operators
     OP_PLUS,
     OP_MINUS,
     OP_TIMES,
@@ -29,7 +29,7 @@ typedef enum {
     OP_GTE,
     KW_RECEIVES,
 
-    // KEY-WORDS
+    // Keywords
     KW_IF,
     KW_ELSE,
     KW_WHILE,
@@ -43,13 +43,13 @@ typedef enum {
     RPAREN,
     COMMA,
 
-    // DELIMITER
+    // Delimiter
     SEMICOLON,
 
-    // END OF FILE
+    // End of file
     EOF_TOKEN,
 
-    // UNKNOWN TOKEN
+    // Unknown token
     UNKNOWN
 } TokenType;
 
