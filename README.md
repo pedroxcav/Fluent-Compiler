@@ -52,6 +52,9 @@ make
 # Variável
 integer x receives 5;
 
+# Número negativo
+integer y receives negative 5;
+
 # Condicional
 if (x is greater than 0) then
     say("positivo");
@@ -64,10 +67,18 @@ while (x is greater than 0) then
     x receives x minus 1;
 end
 
-# Função
+# Função com retorno
 integer function soma(integer a, integer b) then
     return a plus b;
 end
+
+# Função sem retorno
+void function greet(string name) then
+    say(name);
+end
+
+# Chamada de função como statement
+greet("world");
 ```
 
 > Blocos sempre delimitados por `then` ... `end`. Comentários com `#` (apenas de linha).
@@ -117,6 +128,7 @@ Declaração: `TYPE IDENTIFIER receives EXPR` -> exemplo: `float pi receives 3.1
 | `OP_LTE`      | `is less than or equal to`    | menor ou igual |
 | `OP_GTE`      | `is greater than or equal to` | maior ou igual |
 | `KW_RECEIVES` | `receives`                    | atribuição     |
+| `KW_NEGATIVE` | `negative`                    | negação unária |
 
 ---
 
@@ -132,6 +144,8 @@ Declaração: `TYPE IDENTIFIER receives EXPR` -> exemplo: `float pi receives 3.1
 | `KW_THEN`      | `then`                      |
 | `KW_END`       | `end`                       |
 | `KW_SAY`       | `say`                       |
+| `KW_VOID`      | `void`                      |
+| `KW_NEGATIVE`  | `negative`                  |
 | `LIT_INTEGER`  | `[0-9]+`                    |
 | `LIT_FLOAT`    | `[0-9]+\.[0-9]+`            |
 | `LIT_STRING`   | `"[^"]*"`                   |
@@ -156,13 +170,16 @@ Declaração: `TYPE IDENTIFIER receives EXPR` -> exemplo: `float pi receives 3.1
 program = { statement } ;
 
 (* Statements *)
-statement = variable_declaration | assignment | if_statement | while_statement | function_definition | return_statement | say_statement ;
+statement = variable_declaration | assignment | expression_statement | if_statement | while_statement | function_definition | return_statement | say_statement ;
 
 (* Declaração de variável *)
 variable_declaration = TYPE IDENTIFIER KW_RECEIVES expression SEMICOLON ;
 
 (* Atribuição *)
 assignment = IDENTIFIER KW_RECEIVES expression SEMICOLON ;
+
+(* Chamada de função como statement *)
+expression_statement = function_call SEMICOLON ;
 
 (* Condicional *)
 if_statement = KW_IF LPAREN expression RPAREN KW_THEN { statement } [ KW_ELSE { statement } ] KW_END ;
@@ -171,7 +188,9 @@ if_statement = KW_IF LPAREN expression RPAREN KW_THEN { statement } [ KW_ELSE { 
 while_statement = KW_WHILE LPAREN expression RPAREN KW_THEN { statement } KW_END ;
 
 (* Definição de função *)
-function_definition = TYPE KW_FUNCTION IDENTIFIER LPAREN [ parameter { COMMA parameter } ] RPAREN KW_THEN { statement } KW_END ;
+function_definition = RETURN_TYPE KW_FUNCTION IDENTIFIER LPAREN [ parameter { COMMA parameter } ] RPAREN KW_THEN { statement } KW_END ;
+
+RETURN_TYPE = TYPE | KW_VOID ;
 
 parameter = TYPE IDENTIFIER ;
 
@@ -190,7 +209,9 @@ addition = multiplication { ( OP_PLUS | OP_MINUS ) multiplication } ;
 
 multiplication = exponentiation { ( OP_TIMES | OP_DIV ) exponentiation } ;
 
-exponentiation = atom [ OP_POW exponentiation ] ;
+exponentiation = unary [ OP_POW exponentiation ] ;
+
+unary = KW_NEGATIVE unary | atom ;
 
 atom = LIT_INTEGER | LIT_FLOAT | LIT_STRING | LIT_TRUE | LIT_FALSE | function_call | IDENTIFIER | LPAREN expression RPAREN ;
 
@@ -201,7 +222,7 @@ function_call = IDENTIFIER LPAREN [ expression { COMMA expression } ] RPAREN ;
 TYPE = TYPE_INTEGER | TYPE_FLOAT | TYPE_STRING | TYPE_BOOLEAN ;
 ```
 
-> A hierarquia de expressões (`comparison` -> `addition` -> `multiplication` -> `exponentiation` -> `atom`) define a precedência dos operadores: operadores mais abaixo na hierarquia são resolvidos primeiro. Cada nível vira uma função recursiva no parser, formando um algoritmo de arvore com recursividade.
+> A hierarquia de expressões (`comparison` -> `addition` -> `multiplication` -> `exponentiation` -> `unary` -> `atom`) define a precedência dos operadores: operadores mais abaixo na hierarquia são resolvidos primeiro. Cada nível vira uma função recursiva no parser, formando um algoritmo de árvore com recursividade.
 
 ---
 
@@ -215,7 +236,7 @@ O lexer utiliza regex pré-compiladas e uma tabela declarativa de tokens (`Token
 4. **Identificadores e reservadas** (`read_identifier`) — regex `^[a-zA-Z_][a-zA-Z0-9_]*`, seguida de lookup na tabela para entradas com `complex = false`
 5. **Símbolos de um caractere** (`read_symbol`) — percorre a tabela procurando entradas com `complex = false` e padrões: `(`, `)`, `,`, `;`
 
-Os regexs são compilados uma única vez em `init_lexer` e armazenados em `lexer.regex[REGEX_COUNT]`, sendo liberados em `del_lexer`. Além disso, função `del_lexer` libera a memória do source internamente. Por isso, o source passado para `init_lexer` deve ser alocado com `malloc` e não deve ser liberado manualmente após `del_lexer`.
+Os regexs são compilados uma única vez em `init_lexer` e armazenados em `lexer.regex[REGEX_COUNT]`, sendo liberados em `del_lexer`. Além disso, a função `del_lexer` libera a memória do source internamente. Por isso, o source passado para `init_lexer` deve ser alocado com `malloc` e não deve ser liberado manualmente após `del_lexer`.
 
 ---
 
@@ -225,10 +246,11 @@ O parser é recursivo descendente, com uma função por regra da gramática EBNF
 
 ### Janela de dois tokens
 
-O parser mantém dois tokens em memória simultaneamente — `current_token` e `lookahead_token` — para resolver dois pontos de ambiguidade da gramática:
+O parser mantém dois tokens em memória simultaneamente — `current_token` e `lookahead_token` — para resolver pontos de ambiguidade da gramática:
 
 - Em `parse_atom`: um `IDENTIFIER` seguido de `LPAREN` é uma chamada de função; caso contrário, é uma referência a variável.
 - Em `parse_statement`: um `TYPE` seguido de `KW_FUNCTION` é uma definição de função; caso contrário, é uma declaração de variável.
+- Em `parse_statement`: um `IDENTIFIER` seguido de `LPAREN` é uma chamada de função usada como statement; caso contrário, é uma atribuição.
 
 ### Funções primitivas
 
@@ -250,7 +272,8 @@ parse_expression
         └── parse_addition    (+, -)                   — associativo à esquerda
               └── parse_multiplication  (*, /)         — associativo à esquerda
                     └── parse_exponentiation (**)      — associativo à direita
-                          └── parse_atom
+                          └── parse_unary  (negative)  — prefixo, recursivo à direita
+                                └── parse_atom
 ```
 
 ---
@@ -264,35 +287,37 @@ A AST usa uma struct única (`ASTNode`) com campos reutilizados por tipo de nó,
 | Campo         | Tipo        | Uso                                                                                           |
 |---------------|-------------|-----------------------------------------------------------------------------------------------|
 | `type`        | `NodeType`  | Tipo do nó                                                                                    |
-| `left`        | `ASTNode *` | Filho esquerdo: condição, operando esquerdo, expressão atribuída, corpo de função, lista de argumentos |
+| `left`        | `ASTNode *` | Filho esquerdo: condição, operando esquerdo, expressão atribuída, corpo de função, lista de argumentos, operando do unário |
 | `right`       | `ASTNode *` | Filho direito: operando direito, corpo do `then`, lista de parâmetros                         |
 | `else_branch` | `ASTNode *` | Corpo do `else` (apenas `NODE_IF`; `NULL` quando ausente)                                     |
 | `next`        | `ASTNode *` | Próximo nó em lista encadeada (statements, parâmetros, argumentos)                            |
 | `value`       | `char *`    | Nome do identificador ou texto do literal (heap-allocated)                                    |
-| `operator`    | `TokenType` | Operador de `NODE_BINARY_OP`                                                                  |
+| `operator`    | `TokenType` | Operador de `NODE_BINARY_OP` e `NODE_UNARY_OP`                                                |
 | `data_type`   | `TokenType` | Tipo declarado em declarações, parâmetros e definições de função                              |
 | `line`        | `int`       | Linha do fonte onde o nó se origina                                                           |
 
 ### Tipos de nó
 
-| NodeType            | `left`              | `right`           | `else_branch`   | `value`        | `data_type`  |
-|---------------------|---------------------|-------------------|-----------------|----------------|--------------|
-| `NODE_PROGRAM`      | head dos statements | —                 | —               | —              | —            |
-| `NODE_VAR_DECL`     | expressão inicial   | —                 | —               | nome da var    | tipo         |
-| `NODE_ASSIGNMENT`   | expressão           | —                 | —               | nome da var    | —            |
-| `NODE_IF`           | condição            | corpo do `then`   | corpo do `else` | —              | —            |
-| `NODE_WHILE`        | condição            | corpo             | —               | —              | —            |
-| `NODE_FUNCTION_DEF` | corpo               | lista de params   | —               | nome da função | tipo retorno |
-| `NODE_PARAMETER`    | —                   | —                 | —               | nome do param  | tipo         |
-| `NODE_RETURN`       | expressão           | —                 | —               | —              | —            |
-| `NODE_SAY`          | expressão           | —                 | —               | —              | —            |
-| `NODE_BINARY_OP`    | operando esquerdo   | operando direito  | —               | —              | —            |
-| `NODE_FUNCTION_CALL`| lista de args       | —                 | —               | nome da função | —            |
-| `NODE_IDENTIFIER`   | —                   | —                 | —               | nome           | —            |
-| `NODE_LIT_INTEGER`  | —                   | —                 | —               | texto literal  | —            |
-| `NODE_LIT_FLOAT`    | —                   | —                 | —               | texto literal  | —            |
-| `NODE_LIT_STRING`   | —                   | —                 | —               | texto literal  | —            |
-| `NODE_LIT_TRUE`     | —                   | —                 | —               | —              | —            |
-| `NODE_LIT_FALSE`    | —                   | —                 | —               | —              | —            |
+| NodeType                  | `left`              | `right`           | `else_branch`   | `value`        | `data_type`  |
+|---------------------------|---------------------|-------------------|-----------------|----------------|--------------|
+| `NODE_PROGRAM`            | head dos statements | —                 | —               | —              | —            |
+| `NODE_VAR_DECL`           | expressão inicial   | —                 | —               | nome da var    | tipo         |
+| `NODE_ASSIGNMENT`         | expressão           | —                 | —               | nome da var    | —            |
+| `NODE_IF`                 | condição            | corpo do `then`   | corpo do `else` | —              | —            |
+| `NODE_WHILE`              | condição            | corpo             | —               | —              | —            |
+| `NODE_FUNCTION_DEF`       | corpo               | lista de params   | —               | nome da função | tipo retorno |
+| `NODE_PARAMETER`          | —                   | —                 | —               | nome do param  | tipo         |
+| `NODE_RETURN`             | expressão           | —                 | —               | —              | —            |
+| `NODE_SAY`                | expressão           | —                 | —               | —              | —            |
+| `NODE_EXPRESSION_STATEMENT` | chamada de função | —                 | —               | —              | —            |
+| `NODE_BINARY_OP`          | operando esquerdo   | operando direito  | —               | —              | —            |
+| `NODE_UNARY_OP`           | operando            | —                 | —               | —              | —            |
+| `NODE_FUNCTION_CALL`      | lista de args       | —                 | —               | nome da função | —            |
+| `NODE_IDENTIFIER`         | —                   | —                 | —               | nome           | —            |
+| `NODE_LIT_INTEGER`        | —                   | —                 | —               | texto literal  | —            |
+| `NODE_LIT_FLOAT`          | —                   | —                 | —               | texto literal  | —            |
+| `NODE_LIT_STRING`         | —                   | —                 | —               | texto literal  | —            |
+| `NODE_LIT_TRUE`           | —                   | —                 | —               | —              | —            |
+| `NODE_LIT_FALSE`          | —                   | —                 | —               | —              | —            |
 
-> Todos os nós participam de listas encadeadas via `-> next`, exceto `NODE_PROGRAM`, `NODE_BINARY_OP`, e os literais, cujo `-> next` é sempre `NULL`.
+> Todos os nós participam de listas encadeadas via `-> next`, exceto `NODE_PROGRAM`, `NODE_BINARY_OP`, `NODE_UNARY_OP`, e os literais, cujo `-> next` é sempre `NULL`.
