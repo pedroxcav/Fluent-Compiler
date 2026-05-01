@@ -38,6 +38,8 @@ typedef enum {
     KW_THEN,
     KW_END,
     KW_SAY,
+    KW_VOID,
+    KW_NEGATIVE,
     IDENTIFIER,
     LPAREN,
     RPAREN,

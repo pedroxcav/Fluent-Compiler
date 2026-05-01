@@ -26,6 +26,8 @@ static TokenValue token_values[] = {
     {"then", KW_THEN, false},
     {"end", KW_END, false},
     {"say", KW_SAY, false},
+    {"void", KW_VOID, false},
+    {"negative", KW_NEGATIVE, false},
     {"true", LIT_TRUE, false},
     {"false", LIT_FALSE, false},
     {"plus", OP_PLUS, false},

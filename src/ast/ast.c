@@ -168,6 +168,16 @@ void print_ast(ASTNode *node, int depth) {
             printf("RPAREN\n");
             break;
 
+        case NODE_EXPRESSION_STATEMENT:
+            printf("NODE_EXPRESSION_STATEMENT\n");
+            print_ast(node->left, depth + 1);
+            break;
+
+        case NODE_UNARY_OP:
+            printf("KW_NEGATIVE\n");
+            print_ast(node->left, depth + 1);
+            break;
+
         case NODE_IDENTIFIER: printf("IDENTIFIER\n"); break;
         case NODE_LIT_INTEGER: printf("LIT_INTEGER\n"); break;
         case NODE_LIT_FLOAT: printf("LIT_FLOAT\n"); break;

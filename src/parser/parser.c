@@ -124,8 +124,22 @@ static ASTNode *parse_atom(Parser *parser) {
     }
 }
 
+static ASTNode *parse_unary(Parser *parser) {
+    int line = parser -> current_token.line;
+
+    if (parser -> current_token.type == KW_NEGATIVE) {
+        consume(parser); // Consume KW_NEGATIVE
+        ASTNode *node = new_node(NODE_UNARY_OP, line);
+        node -> operator = KW_NEGATIVE;
+        // Recursive call allows chaining: negative negative x
+        node -> left = parse_unary(parser);
+        return node;
+    }
+    return parse_atom(parser);
+}
+
 static ASTNode *parse_exponentiation(Parser *parser) {
-    ASTNode *base = parse_atom(parser);
+    ASTNode *base = parse_unary(parser);
 
     if (parser -> current_token.type == OP_POW) {
         int line = parser -> current_token.line;
@@ -318,8 +332,18 @@ static ASTNode *parse_function_definition(Parser *parser) {
     int line = parser -> current_token.line;
 
     ASTNode *node = new_node(NODE_FUNCTION_DEF, line);
+
+    if (!is_type_keyword(parser->current_token.type) && parser->current_token.type != KW_VOID) {
+        fprintf(
+            stderr,
+            "Parse error on line %d: expected a type or 'void' before 'function', got '%s'\n",
+            parser -> current_token.line,
+            parser -> current_token.lexeme ? parser -> current_token.lexeme : "NULL"
+        );
+        exit(1);
+    }
     node -> data_type = parser -> current_token.type;
-    consume(parser); // Consume the type
+    consume(parser); // Consume the type or void
 
     // Through the usage of expect functions
     // We have advance that goes forward in the parser
@@ -382,9 +406,23 @@ static ASTNode *parse_say_statement(Parser *parser) {
     return node;
 }
 
+static ASTNode *parse_expression_statement(Parser *parser) {
+    int line = parser -> current_token.line;
+
+    // Only function calls are valid as standalone statements
+    // A bare identifier followed by LPAREN is the only valid case
+    ASTNode *node = new_node(NODE_EXPRESSION_STATEMENT, line);
+    node -> left = parse_expression(parser);
+    expect(parser, SEMICOLON);
+    return node;
+}
+
 static ASTNode *parse_statement(Parser *parser) {
     // It starts understanding if already have a data type
     // If so, we gonna probably have a function or variable declaration
+    if (parser->current_token.type == KW_VOID) {
+        return parse_function_definition(parser);
+    }
     if (is_type_keyword(parser -> current_token.type)) {
         if (parser -> lookahead_token.type == KW_FUNCTION)
             return parse_function_definition(parser);
@@ -395,6 +433,9 @@ static ASTNode *parse_statement(Parser *parser) {
     // We can just check the current token
     switch (parser -> current_token.type) {
         case IDENTIFIER:
+            // A function call used as a statement: greet("world");
+            if (parser -> lookahead_token.type == LPAREN)
+                return parse_expression_statement(parser);
             return parse_assignment(parser);
         case KW_IF:
             return parse_if_statement(parser);
