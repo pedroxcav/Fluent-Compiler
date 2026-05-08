@@ -3,7 +3,7 @@
 **Teoria da Computação e Compiladores**
 Entrega: 23 de Abril de 2026
 
-Linguagem com sintaxe inspirada no inglês natural, tipada e compilada.
+Linguagem com sintaxe inspirada no inglês natural, tipada estaticamente. O compilador implementa as fases de análise léxica, sintática e semântica — produzindo e validando a AST. A geração de código está em desenvolvimento.
 
 ---
 
@@ -11,21 +11,24 @@ Linguagem com sintaxe inspirada no inglês natural, tipada e compilada.
 
 ```
 Fluent-Compiler/
-├── build/                  # Artefatos de compilação
 ├── src/
-│   ├── main.c              # Ponto de entrada
+│   ├── main.c               # Ponto de entrada — encadeia todas as fases
 │   ├── lexer/
-│   │   ├── token.h         # Definição dos tipos de tokens
-│   │   ├── lexer.h         # Interface do lexer
-│   │   └── lexer.c         # Implementação do lexer
+│   │   ├── token.h          # Definição dos tipos de tokens
+│   │   ├── lexer.h          # Interface do lexer (inclui peek_token)
+│   │   └── lexer.c          # Implementação do lexer
 │   ├── parser/
-│   │   ├── parser.h        # Interface do parser
-│   │   └── parser.c        # Implementação do parser
-│   └── ast/
-│       ├── ast.h           # Definição dos nós da AST
-│       └── ast.c           # Alocação, impressão e liberação da AST
+│   │   ├── parser.h         # Interface do parser
+│   │   └── parser.c         # Parser por descida recursiva LL(2)
+│   ├── ast/
+│   │   ├── ast.h            # Definição dos nós da AST (union discriminada)
+│   │   └── ast.c            # Construtores, print_ast e del_tree
+│   └── semantic/
+│       ├── semantic.h       # Interface da análise semântica
+│       └── semantic.c       # Análise semântica com pilha de escopos
 ├── tests/
-│   └── exemplo.fluent
+│   ├── exemplo.fluent       # Programa de exemplo principal
+│   └── battery/             # Bateria de testes semânticos
 ├── Makefile
 └── README.md
 ```
@@ -34,32 +37,41 @@ Fluent-Compiler/
 
 ## Compilar e Executar
 
-```bash
-# Limpar, compilar e executar
-make re
+> **Atenção:** o Makefile usa comandos do `cmd.exe` (`if not exist`, `rd /s /q`) e foi desenvolvido para **Windows com MinGW**. Em Linux/macOS, substitua `mingw32-make` por `make` e ajuste os comandos de `mkdir`/`rm` no Makefile conforme seu shell.
 
-# Ou separadamente
-make clean
-make
-./build/fluent tests/exemplo.fluent
+```bash
+mingw32-make         # compila → build/fluent.exe
+mingw32-make run     # executa com tests/exemplo.fluent
+mingw32-make clean   # remove a pasta build/
 ```
+
+O executável recebe um arquivo `.fluent` como argumento:
+
+```bash
+./build/fluent.exe meu_programa.fluent
+```
+
+A saída atual exibe a AST anotada com tipos semânticos e reporta erros léxicos, sintáticos e semânticos no stderr.
 
 ---
 
 ## Sintaxe
 
-```
-# Variável
-integer x receives 5;
+```fluent
+# Variáveis
+integer x receives 10;
+float pi receives 3.14;
+string msg receives "hello";
+boolean flag receives true;
 
 # Número negativo
-integer y receives negative 5;
+integer y receives negative x;
 
 # Condicional
-if (x is greater than 0) then
-    say("positivo");
+if (x is greater than 5) then
+    say("maior");
 else
-    say("negativo");
+    say("menor");
 end
 
 # Repetição
@@ -68,17 +80,23 @@ while (x is greater than 0) then
 end
 
 # Função com retorno
-integer function soma(integer a, integer b) then
-    return a plus b;
+integer function max(integer a, integer b) then
+    if (a is greater than b) then
+        return a;
+    else
+        return b;
+    end
 end
 
-# Função sem retorno
-void function greet(string name) then
-    say(name);
+# Função void
+void function saudar(string nome) then
+    say(nome);
 end
 
 # Chamada de função como statement
-greet("world");
+saudar("mundo");
+integer resultado receives max(10, 20);
+say(resultado);
 ```
 
 > Blocos sempre delimitados por `then` ... `end`. Comentários com `#` (apenas de linha).
@@ -87,120 +105,69 @@ greet("world");
 
 ## Tipos Primitivos
 
-Cada tipo primitivo possui dois tokens distintos: a **palavra-chave** usada em declarações e a **literal** que representa o valor em expressões.
+| Tipo      | Declaração       | Literal              |
+|-----------|------------------|----------------------|
+| `integer` | `integer x`      | `42`, `0`, `100`     |
+| `float`   | `float x`        | `3.14`, `2.5`        |
+| `string`  | `string x`       | `"hello"`            |
+| `boolean` | `boolean x`      | `true`, `false`      |
 
-**Palavras-chave de tipo** (usadas em declarações e parâmetros):
+---
 
-| Tipo      | Token          |
-|-----------|----------------|
-| `integer` | `TYPE_INTEGER` |
-| `float`   | `TYPE_FLOAT`   |
-| `string`  | `TYPE_STRING`  |
-| `boolean` | `TYPE_BOOLEAN` |
+## Palavras Reservadas
 
-**Literais** (valores concretos em expressões):
-
-| Literal          | Token         | Regex / Lexema   |
-|------------------|---------------|------------------|
-| `42`, `0`, `100` | `LIT_INTEGER` | `[0-9]+`         |
-| `3.14`, `2.5`    | `LIT_FLOAT`   | `[0-9]+\.[0-9]+` |
-| `"hello"`        | `LIT_STRING`  | `"[^"]*"`        |
-| `true`           | `LIT_TRUE`    | `true`           |
-| `false`          | `LIT_FALSE`   | `false`          |
-
-Declaração: `TYPE IDENTIFIER receives EXPR` -> exemplo: `float pi receives 3.14`
+`integer` `float` `string` `boolean` `void` `true` `false` `receives` `if` `else` `while` `function` `return` `then` `end` `say` `negative`
 
 ---
 
 ## Operadores
 
-| Token         | Lexema                        | Operação       |
-|---------------|-------------------------------|----------------|
-| `OP_PLUS`     | `plus`                        | adição         |
-| `OP_MINUS`    | `minus`                       | subtração      |
-| `OP_TIMES`    | `times`                       | multiplicação  |
-| `OP_DIV`      | `divided by`                  | divisão        |
-| `OP_POW`      | `to the power of`             | exponenciação  |
-| `OP_EQ`       | `equals`                      | igual          |
-| `OP_NEQ`      | `differs from`                | diferente      |
-| `OP_LT`       | `is less than`                | menor que      |
-| `OP_GT`       | `is greater than`             | maior que      |
-| `OP_LTE`      | `is less than or equal to`    | menor ou igual |
-| `OP_GTE`      | `is greater than or equal to` | maior ou igual |
-| `KW_RECEIVES` | `receives`                    | atribuição     |
-| `KW_NEGATIVE` | `negative`                    | negação unária |
-
----
-
-## Tokens
-
-| Token          | Lexema / Regex              |
-|----------------|------------------------------|
-| `KW_IF`        | `if`                        |
-| `KW_ELSE`      | `else`                      |
-| `KW_WHILE`     | `while`                     |
-| `KW_FUNCTION`  | `function`                  |
-| `KW_RETURN`    | `return`                    |
-| `KW_THEN`      | `then`                      |
-| `KW_END`       | `end`                       |
-| `KW_SAY`       | `say`                       |
-| `KW_VOID`      | `void`                      |
-| `KW_NEGATIVE`  | `negative`                  |
-| `LIT_INTEGER`  | `[0-9]+`                    |
-| `LIT_FLOAT`    | `[0-9]+\.[0-9]+`            |
-| `LIT_STRING`   | `"[^"]*"`                   |
-| `LIT_TRUE`     | `true`                      |
-| `LIT_FALSE`    | `false`                     |
-| `IDENTIFIER`   | `[a-zA-Z_][a-zA-Z0-9_]*`    |
-| `LPAREN`       | `(`                         |
-| `RPAREN`       | `)`                         |
-| `COMMA`        | `,`                         |
-| `SEMICOLON`    | `;`                         |
-
-**Ignorados:** espaços/tabs `[ \t]+`, quebras de linha `\n|\r\n`, comentários `#[^\n]*`
-
-> Prioridade no lexer: (1) operadores multi-palavra, do mais longo ao mais curto. (2) palavras-chave e tipos. (3) identificadores.
+| Lexema                        | Operação          | Resultado              |
+|-------------------------------|-------------------|------------------------|
+| `plus`                        | adição            | integer ou float       |
+| `minus`                       | subtração         | integer ou float       |
+| `times`                       | multiplicação     | integer ou float       |
+| `divided by`                  | divisão           | integer ou float       |
+| `to the power of`             | exponenciação     | integer ou float       |
+| `equals`                      | igual             | boolean                |
+| `differs from`                | diferente         | boolean                |
+| `is less than`                | menor que         | boolean                |
+| `is greater than`             | maior que         | boolean                |
+| `is less than or equal to`    | menor ou igual    | boolean                |
+| `is greater than or equal to` | maior ou igual    | boolean                |
+| `negative`                    | negação unária    | mesmo tipo do operando |
 
 ---
 
 ## Gramática EBNF
 
 ```ebnf
-(* Programa *)
-program = { statement } ;
+program = { top_level_statement } ;
 
-(* Statements *)
-statement = variable_declaration | assignment | expression_statement | if_statement | while_statement | function_definition | return_statement | say_statement ;
+top_level_statement  = function_definition | statement ;
 
-(* Declaração de variável *)
+statement = variable_declaration | assignment | expression_statement | if_statement | while_statement | return_statement | say_statement ;
+
 variable_declaration = TYPE IDENTIFIER KW_RECEIVES expression SEMICOLON ;
 
-(* Atribuição *)
 assignment = IDENTIFIER KW_RECEIVES expression SEMICOLON ;
 
-(* Chamada de função como statement *)
-expression_statement = function_call SEMICOLON ;
+expression_statement = IDENTIFIER LPAREN [ expression { COMMA expression } ] RPAREN SEMICOLON ;
 
-(* Condicional *)
 if_statement = KW_IF LPAREN expression RPAREN KW_THEN { statement } [ KW_ELSE { statement } ] KW_END ;
 
-(* Repetição *)
 while_statement = KW_WHILE LPAREN expression RPAREN KW_THEN { statement } KW_END ;
 
-(* Definição de função *)
 function_definition = RETURN_TYPE KW_FUNCTION IDENTIFIER LPAREN [ parameter { COMMA parameter } ] RPAREN KW_THEN { statement } KW_END ;
 
 RETURN_TYPE = TYPE | KW_VOID ;
 
 parameter = TYPE IDENTIFIER ;
 
-(* Return *)
 return_statement = KW_RETURN expression SEMICOLON ;
 
-(* Say *)
 say_statement = KW_SAY LPAREN expression RPAREN SEMICOLON ;
 
-(* Expressões — hierarquia define precedência *)
 expression = comparison ;
 
 comparison = addition [ ( OP_EQ | OP_NEQ | OP_LT | OP_GT | OP_LTE | OP_GTE ) addition ] ;
@@ -213,111 +180,65 @@ exponentiation = unary [ OP_POW exponentiation ] ;
 
 unary = KW_NEGATIVE unary | atom ;
 
-atom = LIT_INTEGER | LIT_FLOAT | LIT_STRING | LIT_TRUE | LIT_FALSE | function_call | IDENTIFIER | LPAREN expression RPAREN ;
+atom = LIT_INTEGER | LIT_FLOAT | LIT_STRING | LIT_TRUE | LIT_FALSE | IDENTIFIER [ LPAREN [ expression { COMMA expression } ] RPAREN ] | LPAREN expression RPAREN ;
 
-(* Chamada de função *)
-function_call = IDENTIFIER LPAREN [ expression { COMMA expression } ] RPAREN ;
-
-(* Tipos *)
 TYPE = TYPE_INTEGER | TYPE_FLOAT | TYPE_STRING | TYPE_BOOLEAN ;
 ```
 
-> A hierarquia de expressões (`comparison` -> `addition` -> `multiplication` -> `exponentiation` -> `unary` -> `atom`) define a precedência dos operadores: operadores mais abaixo na hierarquia são resolvidos primeiro. Cada nível vira uma função recursiva no parser, formando um algoritmo de árvore com recursividade.
+---
+
+## Análise Semântica
+
+Realizada em passagem única sobre a AST. Usa uma pilha de tabelas de símbolos para gerenciar escopos — um novo escopo é aberto a cada função, `if` e `while`. Funções são registradas em uma primeira varredura do nível global, permitindo que sejam chamadas antes de sua definição no código.
+
+**Verificações realizadas:**
+
+| Situação                               | Erro emitido                                                                        |
+|----------------------------------------|------------------------------------------------------------------------------------ |
+| Variável usada sem declaração          | `semantic error on line N: undefined variable 'x'`                                 |
+| Variável declarada duas vezes          | `semantic error on line N: variable 'x' already declared`                          |
+| Tipo errado na declaração              | `semantic error on line N: type mismatch in declaration of 'x': expected X, got Y` |
+| Tipo errado na atribuição              | `semantic error on line N: type mismatch in assignment to 'x': expected X, got Y`  |
+| Função chamada sem declaração          | `semantic error on line N: undefined function 'f'`                                 |
+| Número de argumentos incorreto         | `semantic error on line N: function 'f' expects M arguments, got K`                |
+| Tipo de argumento incompatível         | `semantic error on line N: argument 1 of 'f': expected X, got Y`                  |
+| `return` fora de função                | `semantic error on line N: 'return' outside function`                              |
+| `return` com tipo errado               | `semantic error on line N: return type mismatch in 'f': expected X, got Y`        |
+| Função não-void sem `return`           | `semantic error: missing return in function 'f'`                                   |
+| Parâmetro duplicado na definição       | `semantic error on line N: duplicate parameter 'p' in function 'f'`               |
+| Operação entre tipos incompatíveis     | `semantic error on line N: type mismatch: cannot apply 'op' to X and Y`           |
+| `negative` aplicado a tipo não-numérico| `semantic error on line N: type mismatch: cannot apply 'negative' to X`           |
+
+**Regras de compatibilidade de tipos:**
+
+| Operandos                  | Resultado  |
+|----------------------------|------------|
+| `integer` op `integer`     | `integer`  |
+| `float` op `float`         | `float`    |
+| `integer` op `float`       | `float`    |
+| qualquer outro par         | erro       |
+
+Comparações seguem as mesmas regras de compatibilidade, mas sempre retornam `boolean`. Os operadores `equals` e `differs from` aceitam quaisquer dois operandos do mesmo tipo; os de ordem (`is less than`, etc.) aceitam apenas tipos numéricos.
+
+**Conversão implícita:**
+
+Quando há mistura de `integer` e `float` em uma expressão, declaração ou atribuição compatível, a análise semântica insere automaticamente um nó `NODE_CAST` na AST para registrar a conversão necessária. A execução da conversão em si é responsabilidade do gerador de código.
+
+**Propagação de retorno:**
+
+Um `if/else` em que ambos os ramos contêm `return` é considerado como retorno garantido — a função é validada sem exigir um `return` adicional após o bloco.
 
 ---
 
-## Lexer
+## Lookahead LL(2)
 
-O lexer utiliza regex pré-compiladas e uma tabela declarativa de tokens (`TokenValue`), seguindo a ordem de prioridade abaixo em cada chamada de `next_token`:
+O parser é predominantemente LL(1), mas requer 2 tokens em dois pontos:
 
-1. **Operadores multipalavra** (`complex_token`), usando entradas com `complex = true`
-2. **Números** (`read_number`) — regex `^[0-9]+\.[0-9]+` e `^[0-9]+`
-3. **Strings** (`read_string`) — regex `^"[^"]*"`
-4. **Identificadores e reservadas** (`read_identifier`) — regex `^[a-zA-Z_][a-zA-Z0-9_]*`, seguida de lookup na tabela para entradas com `complex = false`
-5. **Símbolos de um caractere** (`read_symbol`) — percorre a tabela procurando entradas com `complex = false` e padrões: `(`, `)`, `,`, `;`
+| Contexto              | Token 1      | Token 2      | Decisão                    |
+|-----------------------|--------------|--------------|----------------------------|
+| `top_level_statement` | `TYPE`       | `function`   | → `function_definition`    |
+| `top_level_statement` | `TYPE`       | outro        | → `variable_declaration`   |
+| `statement`           | `IDENTIFIER` | `(`          | → `expression_statement`   |
+| `statement`           | `IDENTIFIER` | `receives`   | → `assignment`             |
 
-Os regexs são compilados uma única vez em `init_lexer` e armazenados em `lexer.regex[REGEX_COUNT]`, sendo liberados em `del_lexer`. Além disso, a função `del_lexer` libera a memória do source internamente. Por isso, o source passado para `init_lexer` deve ser alocado com `malloc` e não deve ser liberado manualmente após `del_lexer`.
-
----
-
-## Parser
-
-O parser é recursivo descendente, com uma função por regra da gramática EBNF. Constrói a AST diretamente, sem passar por uma parse tree intermediária.
-
-### Janela de dois tokens
-
-O parser mantém dois tokens em memória simultaneamente — `current_token` e `lookahead_token` — para resolver pontos de ambiguidade da gramática:
-
-- Em `parse_atom`: um `IDENTIFIER` seguido de `LPAREN` é uma chamada de função; caso contrário, é uma referência a variável.
-- Em `parse_statement`: um `TYPE` seguido de `KW_FUNCTION` é uma definição de função; caso contrário, é uma declaração de variável.
-- Em `parse_statement`: um `IDENTIFIER` seguido de `LPAREN` é uma chamada de função usada como statement; caso contrário, é uma atribuição.
-
-### Funções primitivas
-
-| Função    | Comportamento |
-|-----------|---------------|
-| `advance` | Desloca a janela: `current ← lookahead`, `lookahead ← next_token()` |
-| `expect`  | Consome o token atual verificando o tipo; retorna o lexeme (ownership transferido ao chamador) |
-| `consume` | Consome o token atual sem verificar o tipo; libera o lexeme |
-
-`expect` transfere o ponteiro do lexeme diretamente para o nó da AST, sem cópia. O nó é responsável por liberar a memória via `del_ast`. Tokens consumidos com `consume` têm o lexeme liberado imediatamente.
-
-### Precedência de operadores
-
-A precedência é codificada na hierarquia de chamadas: cada nível chama o nível abaixo antes de processar seu próprio operador. Operadores mais abaixo na hierarquia têm maior precedência.
-
-```
-parse_expression
-  └── parse_comparison        (==, !=, <, >, <=, >=)   — não-associativo
-        └── parse_addition    (+, -)                   — associativo à esquerda
-              └── parse_multiplication  (*, /)         — associativo à esquerda
-                    └── parse_exponentiation (**)      — associativo à direita
-                          └── parse_unary  (negative)  — prefixo, recursivo à direita
-                                └── parse_atom
-```
-
----
-
-## AST
-
-A AST usa uma struct única (`ASTNode`) com campos reutilizados por tipo de nó, evitando union de structs.
-
-### Campos
-
-| Campo         | Tipo        | Uso                                                                                           |
-|---------------|-------------|-----------------------------------------------------------------------------------------------|
-| `type`        | `NodeType`  | Tipo do nó                                                                                    |
-| `left`        | `ASTNode *` | Filho esquerdo: condição, operando esquerdo, expressão atribuída, corpo de função, lista de argumentos, operando do unário |
-| `right`       | `ASTNode *` | Filho direito: operando direito, corpo do `then`, lista de parâmetros                         |
-| `else_branch` | `ASTNode *` | Corpo do `else` (apenas `NODE_IF`; `NULL` quando ausente)                                     |
-| `next`        | `ASTNode *` | Próximo nó em lista encadeada (statements, parâmetros, argumentos)                            |
-| `value`       | `char *`    | Nome do identificador ou texto do literal (heap-allocated)                                    |
-| `operator`    | `TokenType` | Operador de `NODE_BINARY_OP` e `NODE_UNARY_OP`                                                |
-| `data_type`   | `TokenType` | Tipo declarado em declarações, parâmetros e definições de função                              |
-| `line`        | `int`       | Linha do fonte onde o nó se origina                                                           |
-
-### Tipos de nó
-
-| NodeType                  | `left`              | `right`           | `else_branch`   | `value`        | `data_type`  |
-|---------------------------|---------------------|-------------------|-----------------|----------------|--------------|
-| `NODE_PROGRAM`            | head dos statements | —                 | —               | —              | —            |
-| `NODE_VAR_DECL`           | expressão inicial   | —                 | —               | nome da var    | tipo         |
-| `NODE_ASSIGNMENT`         | expressão           | —                 | —               | nome da var    | —            |
-| `NODE_IF`                 | condição            | corpo do `then`   | corpo do `else` | —              | —            |
-| `NODE_WHILE`              | condição            | corpo             | —               | —              | —            |
-| `NODE_FUNCTION_DEF`       | corpo               | lista de params   | —               | nome da função | tipo retorno |
-| `NODE_PARAMETER`          | —                   | —                 | —               | nome do param  | tipo         |
-| `NODE_RETURN`             | expressão           | —                 | —               | —              | —            |
-| `NODE_SAY`                | expressão           | —                 | —               | —              | —            |
-| `NODE_EXPRESSION_STATEMENT` | chamada de função | —                 | —               | —              | —            |
-| `NODE_BINARY_OP`          | operando esquerdo   | operando direito  | —               | —              | —            |
-| `NODE_UNARY_OP`           | operando            | —                 | —               | —              | —            |
-| `NODE_FUNCTION_CALL`      | lista de args       | —                 | —               | nome da função | —            |
-| `NODE_IDENTIFIER`         | —                   | —                 | —               | nome           | —            |
-| `NODE_LIT_INTEGER`        | —                   | —                 | —               | texto literal  | —            |
-| `NODE_LIT_FLOAT`          | —                   | —                 | —               | texto literal  | —            |
-| `NODE_LIT_STRING`         | —                   | —                 | —               | texto literal  | —            |
-| `NODE_LIT_TRUE`           | —                   | —                 | —               | —              | —            |
-| `NODE_LIT_FALSE`          | —                   | —                 | —               | —              | —            |
-
-> Todos os nós participam de listas encadeadas via `-> next`, exceto `NODE_PROGRAM`, `NODE_BINARY_OP`, `NODE_UNARY_OP`, e os literais, cujo `-> next` é sempre `NULL`.
+O lexer expõe `peek_token()` para suporte a esse lookahead. O token espiado é armazenado internamente e consumido na próxima chamada a `next_token`.

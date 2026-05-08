@@ -36,21 +36,21 @@ static TokenValue token_values[] = {
     {"equals", OP_EQ, false},
 
     // Symbols
-    {"(", LPAREN,    false},
-    {")", RPAREN,    false},
-    {",", COMMA,     false},
+    {"(", LPAREN, false},
+    {")", RPAREN, false},
+    {",", COMMA, false},
     {";", SEMICOLON, false},
 
     {NULL, UNKNOWN, false}
 };
 
 static const char *patterns[REGEX_COUNT] = {
-    "^[0-9]+\\.[0-9]+",        // Float
-    "^[0-9]+",                 // Integer
-    "^\"[^\"]*\"",             // String
+    "^[0-9]+\\.[0-9]+", // Float
+    "^[0-9]+", // Integer
+    "^\"[^\"]*\"", // String
     "^[a-zA-Z_][a-zA-Z0-9_]*", // Identifier
-    "^[ \t\r\n]+",             // Whitespace
-    "^#[^\n]*",                // Comment
+    "^[ \t\r\n]+", // Whitespace
+    "^#[^\n]*", // Comment
 };
 
 // Gets part of souce from start to current position
@@ -93,8 +93,8 @@ static void skip_whitespace(Lexer *lexer) {
         // When the match as a whitespace is true, we advance our position for the end of it
         // If we have an empty space than include many lines, we also update that number
         if (match_regex(lexer, REGEX_WHITESPACE, &length)) {
-            for (int i = 0; i < length; i++)
-                if (lexer -> source[lexer -> position + i] == '\n')
+            for (int index = 0; index < length; index++)
+                if (lexer -> source[lexer -> position + index] == '\n')
                     lexer -> line++;
             lexer -> position += length;
             found = true;
@@ -108,21 +108,22 @@ static void skip_whitespace(Lexer *lexer) {
 
 static bool complex_token(Lexer *lexer, Token *token) {
     // Runs thought all of the token values until the last one
-    for (int i = 0; token_values[i].pattern != NULL; i++) {
-        if (!token_values[i].complex) continue;
+    for (int index = 0; token_values[index].pattern != NULL; index++) {
+        if (!token_values[index].complex) continue;
         
-        int length = strlen(token_values[i].pattern);
+        int length = strlen(token_values[index].pattern);
         // If the current pattern doesn't match, try the next one
-        if (strncmp(lexer -> source + lexer -> position, token_values[i].pattern, length) != 0)
+        if (strncmp(lexer -> source + lexer -> position, token_values[index].pattern, length) != 0)
             continue;
         
         // The pattern must be wrote correctly with spaces, otherwise it will probably be an identifier
         char next = lexer->source[lexer->position + length];
-        if (isalnum(next) || next == '_') continue;
+        if (isalnum(next) || next == '_') 
+            continue;
 
         int start = lexer->position;
         lexer -> position += length;
-        token -> type = token_values[i].type;
+        token -> type = token_values[index].type;
         token -> lexeme = extract_lexeme(lexer, start);
         return true;
     }
@@ -150,7 +151,11 @@ static bool read_string(Lexer *lexer, Token *token) {
 
     int length;
     if (!match_regex(lexer, REGEX_STRING, &length)) {
-        fprintf(stderr, "Lexer error on line %d: unterminated string literal\n", lexer -> line);
+        fprintf(
+            stderr, 
+            "Lexer error on line %d: unterminated string literal\n", 
+            lexer -> line
+        );
         exit(1);
     }
     // Considers the size of the string without the quotes (length - 2)
@@ -176,9 +181,9 @@ static bool read_identifier(Lexer *lexer, Token *token) {
     token -> lexeme = extract_lexeme(lexer, start);
 
     token -> type = IDENTIFIER;
-    for (int i = 0; token_values[i].pattern != NULL; i++) {
-        if (!token_values[i].complex && strcmp(token -> lexeme, token_values[i].pattern) == 0) {
-            token -> type = token_values[i].type;
+    for (int index = 0; token_values[index].pattern != NULL; index++) {
+        if (!token_values[index].complex && strcmp(token -> lexeme, token_values[index].pattern) == 0) {
+            token -> type = token_values[index].type;
             break;
         }
     }
@@ -186,15 +191,15 @@ static bool read_identifier(Lexer *lexer, Token *token) {
 }
 
 static bool read_symbol(Lexer *lexer, Token *token) {
-    for (int i = 0; token_values[i].pattern != NULL; i++) {
-        if (token_values[i].complex) continue;
-        const char *pattern = token_values[i].pattern;
+    for (int index = 0; token_values[index].pattern != NULL; index++) {
+        if (token_values[index].complex) continue;
+        const char *pattern = token_values[index].pattern;
         if (strlen(pattern) == 1 && !isalpha((unsigned char)pattern[0])
                 && lexer -> source[lexer->position] == pattern[0]) {
             int start = lexer->position;
-            lexer->position++;
-            token->type = token_values[i].type;
-            token->lexeme = extract_lexeme(lexer, start);
+            lexer -> position++;
+            token -> type = token_values[index].type;
+            token -> lexeme = extract_lexeme(lexer, start);
             return true;
         }
     }
@@ -202,8 +207,12 @@ static bool read_symbol(Lexer *lexer, Token *token) {
 }
 
 Token next_token(Lexer *lexer) {
+    if (lexer -> has_peeked) {
+        lexer -> has_peeked = false; 
+        return lexer->peeked; 
+    }
     skip_whitespace(lexer);
-
+    
     Token token;
     token.line = lexer->line;
     token.lexeme = NULL;
@@ -218,28 +227,40 @@ Token next_token(Lexer *lexer) {
     if (read_identifier(lexer, &token)) return token;
     if (read_symbol(lexer, &token)) return token;
 
-    int start_pos = lexer->position++;
+    int start_position = lexer->position++;
     token.type = UNKNOWN;
-    token.lexeme = extract_lexeme(lexer, start_pos);
+    token.lexeme = extract_lexeme(lexer, start_position);
     return token;
 }
 
 // At the end, it will be freed by del_lexer. Do not free it manually.
 void init_lexer(Lexer *lexer, char *source) {
-    lexer->source = source;
-    lexer->position = 0;
-    lexer->line = 1;
+    lexer -> source = source;
+    lexer -> position = 0;
+    lexer -> line = 1;
+    lexer -> has_peeked = false;
 
-    for (int i = 0; i < REGEX_COUNT; i++) {
-        if (regcomp(&lexer->regex[i], patterns[i], REG_EXTENDED) != 0) {
-            fprintf(stderr, "Erro ao compilar regex: %s\n", patterns[i]);
+    for (int index = 0; index < REGEX_COUNT; index++) {
+        if (regcomp(&lexer -> regex[index], patterns[index], REG_EXTENDED) != 0) {
+            fprintf(stderr, "Erro ao compilar regex: %s\n", patterns[index]);
             exit(1);
         }
     }
 }
 
+/* Libera os recursos do lexer. Assume que lexer->source foi alocado
+ * com malloc() pelo chamador e transferido para cá — não use del_lexer
+ * se source apontar para memória estática ou gerenciada externamente. */
 void del_lexer(Lexer *lexer) {
-    for (int i = 0; i < REGEX_COUNT; i++)
-        regfree(&lexer->regex[i]);
-    free(lexer->source);
+    for (int index = 0; index < REGEX_COUNT; index++)
+        regfree(&lexer -> regex[index]);
+    free(lexer -> source);
+}
+
+Token peek_token(Lexer *lexer) {
+    if (!lexer -> has_peeked) {
+        lexer -> peeked = next_token(lexer);
+        lexer -> has_peeked = true;
+    }
+    return lexer -> peeked;
 }

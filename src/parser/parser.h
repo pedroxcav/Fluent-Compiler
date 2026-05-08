@@ -1,18 +1,16 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdbool.h>
 #include "../lexer/lexer.h"
 #include "../ast/ast.h"
 
 typedef struct {
     Lexer *lexer;
-    Token current_token;
-    Token lookahead_token;
+    Token  current;
 } Parser;
 
-ASTNode *parse(Lexer *lexer);
+void init_parser(Parser *parser, Lexer *lexer);
+ASTNode *parse_program(Parser *parser);
 
 #endif

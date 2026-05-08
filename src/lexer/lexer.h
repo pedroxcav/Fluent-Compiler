@@ -28,10 +28,13 @@ typedef struct {
     int position;
     int line;
     regex_t regex[REGEX_COUNT];
+    bool  has_peeked;
+    Token peeked;
 } Lexer;
 
-void init_lexer(Lexer *lexer, char *source);
-void del_lexer(Lexer *lexer);
+void  init_lexer(Lexer *lexer, char *source);
+void  del_lexer(Lexer *lexer);
 Token next_token(Lexer *lexer);
+Token peek_token(Lexer *lexer);
 
 #endif
