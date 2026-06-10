@@ -93,8 +93,6 @@ static void error(const char *msg) {
     exit(1);
 }
 
-/* Envolve *node em um NODE_CAST se o tipo atual diferir do tipo alvo.
- * Só atua entre integer e float. Atualiza o ponteiro no lugar. */
 static void coerce(ASTNode **node, SemanticType target) {
     if (!node || !*node) return;
     SemanticType current = (*node) -> semantic_type;

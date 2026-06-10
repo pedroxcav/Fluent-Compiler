@@ -33,7 +33,7 @@ typedef enum {
     NODE_FLOAT,
     NODE_STRING,
     NODE_BOOLEAN,
-    NODE_CAST        /* coerção implícita inserida pela análise semântica */
+    NODE_CAST
 } NodeType;
 
 typedef struct ASTNode ASTNode;
@@ -131,11 +131,9 @@ typedef struct {
     bool value; 
 } NodeBoolean;
 
-/* Coerção implícita: envolve uma expressão e indica o tipo alvo.
- * Inserido pela análise semântica, nunca pelo parser. */
 typedef struct {
-    SemanticType to;   /* tipo destino */
-    ASTNode     *expr; /* expressão original */
+    SemanticType to;
+    ASTNode     *expr;
 } NodeCast;
 
 struct ASTNode {

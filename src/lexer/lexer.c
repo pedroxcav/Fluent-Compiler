@@ -248,9 +248,6 @@ void init_lexer(Lexer *lexer, char *source) {
     }
 }
 
-/* Libera os recursos do lexer. Assume que lexer->source foi alocado
- * com malloc() pelo chamador e transferido para cá — não use del_lexer
- * se source apontar para memória estática ou gerenciada externamente. */
 void del_lexer(Lexer *lexer) {
     for (int index = 0; index < REGEX_COUNT; index++)
         regfree(&lexer -> regex[index]);
