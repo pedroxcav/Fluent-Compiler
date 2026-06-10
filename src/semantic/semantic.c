@@ -203,18 +203,28 @@ static SemanticType analyse_expression(Analyser *analyser, ASTNode *node) {
                             snprintf(
                                 msg, sizeof(msg),
                                 "type mismatch: cannot apply '%s' to %s and %s",
-                                operator, semantic_type_name(left_type), 
+                                operator, semantic_type_name(left_type),
                                 semantic_type_name(right_type)
                             );
                             error_line(node -> line, msg);
                         }
+                        coerce(&node -> data.binary_operation.left, SEMANTIC_FLOAT);
+                        coerce(&node -> data.binary_operation.right, SEMANTIC_FLOAT);
                     }
                 } else {
                     arith_result(left_type, right_type, operator, node -> line);
+                    if (left_type != right_type) {
+                        coerce(&node -> data.binary_operation.left, SEMANTIC_FLOAT);
+                        coerce(&node -> data.binary_operation.right, SEMANTIC_FLOAT);
+                    }
                 }
                 semantic_type = SEMANTIC_BOOLEAN;
             } else {
                 semantic_type = arith_result(left_type, right_type, operator, node -> line);
+                if (semantic_type == SEMANTIC_FLOAT) {
+                    coerce(&node -> data.binary_operation.left, SEMANTIC_FLOAT);
+                    coerce(&node -> data.binary_operation.right, SEMANTIC_FLOAT);
+                }
             }
             break;
         }
@@ -308,7 +318,12 @@ static void analyse_statement(Analyser *analyser, ASTNode *node) {
             analyse_expression(analyser, node -> data.expression_statement.call);
             break;
         case NODE_CONDITION: {
-            analyse_expression(analyser, node -> data.condition_statement.condition);
+            SemanticType condition_type = analyse_expression(analyser, node -> data.condition_statement.condition);
+            if (condition_type != SEMANTIC_BOOLEAN) {
+                char msg[256];
+                snprintf(msg, sizeof(msg), "condition must be boolean, got %s", semantic_type_name(condition_type));
+                error_line(node -> line, msg);
+            }
             bool saved = analyser -> has_return;
 
             Scope *then_scope = scope_new(analyser -> current);
@@ -334,7 +349,12 @@ static void analyse_statement(Analyser *analyser, ASTNode *node) {
             break;
         }
         case NODE_WHILE: {
-            analyse_expression(analyser, node -> data.while_statement.condition);
+            SemanticType condition_type = analyse_expression(analyser, node -> data.while_statement.condition);
+            if (condition_type != SEMANTIC_BOOLEAN) {
+                char msg[256];
+                snprintf(msg, sizeof(msg), "condition must be boolean, got %s", semantic_type_name(condition_type));
+                error_line(node -> line, msg);
+            }
             bool saved_while = analyser -> has_return;
             Scope *loop_scope = scope_new(analyser -> current);
             Scope *previous_scope = analyser -> current;
@@ -397,9 +417,9 @@ static void register_function(Scope *global, ASTNode *node) {
     symbol -> parameter_count = parameter_count;
     if (parameter_count > 0) {
         symbol -> parameter_types = malloc(parameter_count * sizeof(SemanticType));
-        if (!symbol -> parameter_types) {
-            fprintf(stderr, "semantic: out of memory\n");
-            exit(1);
+        if (!symbol -> parameter_types) { 
+            fprintf(stderr, "semantic: out of memory\n"); 
+            exit(1); 
         }
         for (int index = 0; index < parameter_count; index++)
             symbol -> parameter_types[index] = node -> data.function_definition.parameters[index] -> data.parameter.type;

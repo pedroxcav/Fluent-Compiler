@@ -10,9 +10,9 @@ typedef struct {
 } NodeList;
 
 static void list_init(NodeList *nodes) {
-    nodes -> data = NULL; 
-    nodes -> length = 0; 
-    nodes -> capacity = 0; 
+    nodes -> data = NULL;
+    nodes -> length = 0;
+    nodes -> capacity = 0;
 }
 
 static void list_push(NodeList *nodes, ASTNode *node) {
@@ -21,7 +21,7 @@ static void list_push(NodeList *nodes, ASTNode *node) {
         nodes -> data = realloc(nodes -> data, nodes -> capacity * sizeof(ASTNode *));
         if (!nodes -> data) {
             fprintf(stderr, "parser: out of memory\n");
-            exit(1); 
+            exit(1);
         }
     }
     nodes -> data[nodes -> length++] = node;
@@ -81,6 +81,12 @@ static Token advance(Parser *parser) {
     return token;
 }
 
+static void consume(Parser *parser) {
+    free(parser -> current.lexeme);
+    parser -> current.lexeme = NULL;
+    parser -> current = next_token(parser -> lexer);
+}
+
 static Token peek(Parser *parser) {
     return peek_token(parser -> lexer);
 }
@@ -92,7 +98,7 @@ static bool check(Parser *parser, TokenType type) {
 static Token expect(Parser *parser, TokenType type) {
     if (parser -> current.type != type) {
         fprintf(
-            stderr, 
+            stderr,
             "Parse error on line %d: expected '%s', got '%s'\n",
             parser -> current.line,
             token_type_name(type),
@@ -103,8 +109,22 @@ static Token expect(Parser *parser, TokenType type) {
     return advance(parser);
 }
 
+static void expect_consume(Parser *parser, TokenType type) {
+    if (parser -> current.type != type) {
+        fprintf(
+            stderr,
+            "Parse error on line %d: expected '%s', got '%s'\n",
+            parser -> current.line,
+            token_type_name(type),
+            parser -> current.lexeme ? parser -> current.lexeme : token_type_name(parser -> current.type)
+        );
+        exit(1);
+    }
+    consume(parser);
+}
+
 static bool is_type_token(TokenType type) {
-    return 
+    return
         type == TYPE_INTEGER || type == TYPE_FLOAT ||
         type == TYPE_STRING  || type == TYPE_BOOLEAN;
 }
@@ -144,44 +164,44 @@ static ASTNode *parse_atom(Parser *parser) {
     int line = parser -> current.line;
     if (check(parser, LIT_INTEGER)) {
         long long value = atoll(parser -> current.lexeme);
-        advance(parser);
+        consume(parser);
         return new_integer(value, line);
     }
     if (check(parser, LIT_FLOAT)) {
         double value = atof(parser -> current.lexeme);
-        advance(parser);
+        consume(parser);
         return new_float(value, line);
     }
     if (check(parser, LIT_STRING)) {
         char *value = strdup(parser -> current.lexeme);
-        advance(parser);
+        consume(parser);
         ASTNode *node = new_string(value, line);
         free(value);
         return node;
     }
     if (check(parser, LIT_TRUE)) {
-        advance(parser); 
-        return new_boolean(true,  line);
+        consume(parser);
+        return new_boolean(true, line);
     }
     if (check(parser, LIT_FALSE)) {
-        advance(parser); 
+        consume(parser);
         return new_boolean(false, line);
     }
     if (check(parser, IDENTIFIER)) {
         char *name = strdup(parser -> current.lexeme);
         if (!name) { fprintf(stderr, "parser: out of memory\n"); exit(1); }
-        advance(parser);
+        consume(parser);
         if (check(parser, LPAREN)) {
-            advance(parser);
+            consume(parser);
             NodeList args; list_init(&args);
             if (!check(parser, RPAREN)) {
                 list_push(&args, parse_expression(parser));
                 while (check(parser, COMMA)) {
-                    advance(parser);
+                    consume(parser);
                     list_push(&args, parse_expression(parser));
                 }
             }
-            expect(parser, RPAREN);
+            expect_consume(parser, RPAREN);
             ASTNode *call_node = new_call(name, args.data, args.length, line);
             free(name);
             return call_node;
@@ -191,13 +211,13 @@ static ASTNode *parse_atom(Parser *parser) {
         return id_node;
     }
     if (check(parser, LPAREN)) {
-        advance(parser);
+        consume(parser);
         ASTNode *expression = parse_expression(parser);
-        expect(parser, RPAREN);
+        expect_consume(parser, RPAREN);
         return expression;
     }
     fprintf(
-        stderr, 
+        stderr,
         "Parse error on line %d: unexpected token '%s' in expression\n",
         parser -> current.line,
         parser -> current.lexeme ? parser -> current.lexeme : token_type_name(parser -> current.type)
@@ -208,7 +228,7 @@ static ASTNode *parse_atom(Parser *parser) {
 static ASTNode *parse_unary(Parser *parser) {
     int line = parser -> current.line;
     if (check(parser, KW_NEGATIVE)) {
-        advance(parser);
+        consume(parser);
         ASTNode *value = parse_unary(parser);
         return new_unary("negative", value, line);
     }
@@ -219,7 +239,7 @@ static ASTNode *parse_exponentiation(Parser *parser) {
     int line = parser -> current.line;
     ASTNode *left = parse_unary(parser);
     if (check(parser, OP_POW)) {
-        advance(parser);
+        consume(parser);
         ASTNode *right = parse_exponentiation(parser);
         return new_binop("to the power of", left, right, line);
     }
@@ -231,7 +251,7 @@ static ASTNode *parse_multiplication(Parser *parser) {
     while (check(parser, OP_TIMES) || check(parser, OP_DIV)) {
         const char *operator = operator_name(parser -> current.type);
         int line = parser -> current.line;
-        advance(parser);
+        consume(parser);
         ASTNode *right = parse_exponentiation(parser);
         left = new_binop(operator, left, right, line);
     }
@@ -243,7 +263,7 @@ static ASTNode *parse_addition(Parser *parser) {
     while (check(parser, OP_PLUS) || check(parser, OP_MINUS)) {
         const char *operator = operator_name(parser -> current.type);
         int line = parser -> current.line;
-        advance(parser);
+        consume(parser);
         ASTNode *right = parse_multiplication(parser);
         left = new_binop(operator, left, right, line);
     }
@@ -259,7 +279,7 @@ static ASTNode *parse_comparison(Parser *parser) {
     ) {
         const char *operator = operator_name(token_type);
         int line = parser -> current.line;
-        advance(parser);
+        consume(parser);
         ASTNode *right = parse_addition(parser);
         return new_binop(operator, left, right, line);
     }
@@ -280,107 +300,111 @@ static ASTNode **parse_body(Parser *parser, int *out_count) {
 
 static ASTNode *parse_condition(Parser *parser) {
     int line = parser -> current.line;
-    expect(parser, KW_IF);
-    expect(parser, LPAREN);
+    expect_consume(parser, KW_IF);
+    expect_consume(parser, LPAREN);
     ASTNode *condition = parse_expression(parser);
-    expect(parser, RPAREN);
-    expect(parser, KW_THEN);
+    expect_consume(parser, RPAREN);
+    expect_consume(parser, KW_THEN);
     int then_count = 0;
     ASTNode **then_body = parse_body(parser, &then_count);
     int else_count = 0;
     ASTNode **else_body = NULL;
     if (check(parser, KW_ELSE)) {
-        advance(parser);
+        consume(parser);
         else_body = parse_body(parser, &else_count);
     }
-    expect(parser, KW_END);
+    expect_consume(parser, KW_END);
     return new_condition(condition, then_body, then_count, else_body, else_count, line);
 }
 
 static ASTNode *parse_while(Parser *parser) {
     int line = parser -> current.line;
-    expect(parser, KW_WHILE);
-    expect(parser, LPAREN);
+    expect_consume(parser, KW_WHILE);
+    expect_consume(parser, LPAREN);
     ASTNode *condition = parse_expression(parser);
-    expect(parser, RPAREN);
-    expect(parser, KW_THEN);
+    expect_consume(parser, RPAREN);
+    expect_consume(parser, KW_THEN);
     int count = 0;
     ASTNode **body = parse_body(parser, &count);
-    expect(parser, KW_END);
+    expect_consume(parser, KW_END);
     return new_while(condition, body, count, line);
 }
 
 static ASTNode *parse_return(Parser *parser) {
     int line = parser -> current.line;
-    expect(parser, KW_RETURN);
+    expect_consume(parser, KW_RETURN);
     ASTNode *expression = NULL;
     if (!check(parser, SEMICOLON))
         expression = parse_expression(parser);
-    expect(parser, SEMICOLON);
+    expect_consume(parser, SEMICOLON);
     return new_return(expression, line);
 }
 
 static ASTNode *parse_say(Parser *parser) {
     int line = parser -> current.line;
-    expect(parser, KW_SAY);
-    expect(parser, LPAREN);
+    expect_consume(parser, KW_SAY);
+    expect_consume(parser, LPAREN);
     ASTNode *expression = parse_expression(parser);
-    expect(parser, RPAREN);
-    expect(parser, SEMICOLON);
+    expect_consume(parser, RPAREN);
+    expect_consume(parser, SEMICOLON);
     return new_say(expression, line);
 }
 
 static ASTNode *parse_declaration(Parser *parser) {
     int line = parser -> current.line;
     SemanticType type = get_semantic_type(parser -> current.type);
-    advance(parser);
+    consume(parser);
     Token name_token = expect(parser, IDENTIFIER);
-    expect(parser, KW_RECEIVES);
+    expect_consume(parser, KW_RECEIVES);
     ASTNode *init_expression = parse_expression(parser);
-    expect(parser, SEMICOLON);
-    return new_declaration(type, name_token.lexeme, init_expression, line);
+    expect_consume(parser, SEMICOLON);
+    ASTNode *node = new_declaration(type, name_token.lexeme, init_expression, line);
+    free(name_token.lexeme);
+    return node;
 }
 
 static ASTNode *parse_assignment(Parser *parser) {
     int line = parser -> current.line;
     Token name_token = expect(parser, IDENTIFIER);
-    expect(parser, KW_RECEIVES);
+    expect_consume(parser, KW_RECEIVES);
     ASTNode *expression = parse_expression(parser);
-    expect(parser, SEMICOLON);
-    return new_assignment(name_token.lexeme, expression, line);
+    expect_consume(parser, SEMICOLON);
+    ASTNode *node = new_assignment(name_token.lexeme, expression, line);
+    free(name_token.lexeme);
+    return node;
 }
 
 static ASTNode *parse_function_usage(Parser *parser) {
     int line = parser -> current.line;
     char *name = strdup(parser -> current.lexeme);
     if (!name) { fprintf(stderr, "parser: out of memory\n"); exit(1); }
-    advance(parser);
-    expect(parser, LPAREN);
+    consume(parser);
+    expect_consume(parser, LPAREN);
     NodeList args; list_init(&args);
     if (!check(parser, RPAREN)) {
         list_push(&args, parse_expression(parser));
         while (check(parser, COMMA)) {
-            advance(parser);
+            consume(parser);
             list_push(&args, parse_expression(parser));
         }
     }
-    expect(parser, RPAREN);
-    expect(parser, SEMICOLON);
+    expect_consume(parser, RPAREN);
+    expect_consume(parser, SEMICOLON);
     ASTNode *call = new_call(name, args.data, args.length, line);
     free(name);
     return new_expression(call, line);
 }
 
 static ASTNode *parse_statement(Parser *parser) {
-    if (check(parser, KW_IF)) return parse_condition(parser);
-    if (check(parser, KW_WHILE)) return parse_while(parser);
+    if (check(parser, KW_IF))     return parse_condition(parser);
+    if (check(parser, KW_WHILE))  return parse_while(parser);
     if (check(parser, KW_RETURN)) return parse_return(parser);
-    if (check(parser, KW_SAY)) return parse_say(parser);
+    if (check(parser, KW_SAY))    return parse_say(parser);
     if (is_type_token(parser -> current.type)) return parse_declaration(parser);
     if (check(parser, IDENTIFIER)) {
         Token next = peek(parser);
-        if (next.type == KW_RECEIVES)return parse_assignment(parser);
-        if (next.type == LPAREN) return parse_function_usage(parser);
+        if (next.type == KW_RECEIVES) return parse_assignment(parser);
+        if (next.type == LPAREN)      return parse_function_usage(parser);
     }
     fprintf(
         stderr, "Parse error on line %d: unexpected token '%s' in statement\n",
@@ -393,10 +417,10 @@ static ASTNode *parse_statement(Parser *parser) {
 static ASTNode *parse_function_definition(Parser *parser) {
     int line = parser -> current.line;
     SemanticType return_type = get_semantic_type(parser -> current.type);
-    advance(parser);
-    expect(parser, KW_FUNCTION);
+    consume(parser);
+    expect_consume(parser, KW_FUNCTION);
     Token name_token = expect(parser, IDENTIFIER);
-    expect(parser, LPAREN);
+    expect_consume(parser, LPAREN);
     NodeList parameters; list_init(&parameters);
     if (!check(parser, RPAREN)) {
         SemanticType parameter_type = get_semantic_type(parser -> current.type);
@@ -405,38 +429,42 @@ static ASTNode *parse_function_definition(Parser *parser) {
             exit(1);
         }
         int parameter_line = parser -> current.line;
-        advance(parser);
+        consume(parser);
         Token parameter_name = expect(parser, IDENTIFIER);
         list_push(&parameters, new_parameter(parameter_type, parameter_name.lexeme, parameter_line));
+        free(parameter_name.lexeme);
         while (check(parser, COMMA)) {
-            advance(parser);
+            consume(parser);
             parameter_type = get_semantic_type(parser -> current.type);
             if (!is_type_token(parser -> current.type)) {
                 fprintf(stderr, "Parse error on line %d: expected parameter type\n", parser -> current.line);
                 exit(1);
             }
             parameter_line = parser -> current.line;
-            advance(parser);
+            consume(parser);
             parameter_name = expect(parser, IDENTIFIER);
             list_push(&parameters, new_parameter(parameter_type, parameter_name.lexeme, parameter_line));
+            free(parameter_name.lexeme);
         }
     }
-    expect(parser, RPAREN);
-    expect(parser, KW_THEN);
+    expect_consume(parser, RPAREN);
+    expect_consume(parser, KW_THEN);
     int body_count = 0;
     ASTNode **body = parse_body(parser, &body_count);
-    expect(parser, KW_END);
-    return new_function(
+    expect_consume(parser, KW_END);
+    ASTNode *node = new_function(
         return_type, name_token.lexeme,
         parameters.data, parameters.length,
         body, body_count, line
     );
+    free(name_token.lexeme);
+    return node;
 }
 
 static ASTNode *parse_top_level(Parser *parser) {
     if (is_type_token(parser -> current.type) || check(parser, KW_VOID)) {
         Token next = peek(parser);
-        if (next.type == KW_FUNCTION) 
+        if (next.type == KW_FUNCTION)
             return parse_function_definition(parser);
         if (is_type_token(parser -> current.type))
             return parse_declaration(parser);
